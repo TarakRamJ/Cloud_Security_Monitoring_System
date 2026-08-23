@@ -1,4 +1,4 @@
-# SentinelCore SecureOps
+# Cloud Security Monitoring System with Incident Management
 
 **Enterprise Security Operations & Infrastructure Monitoring Platform**
 
