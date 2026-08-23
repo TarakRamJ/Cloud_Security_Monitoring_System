@@ -2,7 +2,7 @@
 
 **Enterprise Security Operations & Infrastructure Monitoring Platform**
 
-SentinelCore SecureOps is a cloud-native platform for monitoring, auditing, and securing organizational infrastructure, applications, servers, networks, and cloud resources. It covers security monitoring, vulnerability management, incident tracking, infrastructure monitoring, audit management, access control, compliance reporting, and DevSecOps integration — built as a microservices system with an event-driven backbone.
+CSMS-IMA SecureOps is a cloud-native platform for monitoring, auditing, and securing organizational infrastructure, applications, servers, networks, and cloud resources. It covers security monitoring, vulnerability management, incident tracking, infrastructure monitoring, audit management, access control, compliance reporting, and DevSecOps integration — built as a microservices system with an event-driven backbone.
 
 ![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4-brightgreen?logo=springboot)
@@ -28,7 +28,7 @@ The platform is organized around six core microservices — **User**, **Asset**,
 
 ## Architecture
 
-SentinelCore follows a 9-layer architecture:
+CSMS-IMA follows a 9-layer architecture:
 
 ```
 1. Presentation Layer     → React 20, TypeScript, Material UI, Recharts
@@ -74,9 +74,9 @@ Infrastructure Telemetry → Security Monitoring → Incident Detection
 ## Repository Structure
 
 ```
-SentinelCore/
-├── SentinelCore-SecureOps/   # Backend — Java 25 / Spring Boot 4 microservices
-└── sentinel-frontend/        # Frontend — React 20 + TypeScript
+CSM System/
+├── CSM_backend/   # Backend — Java 25 / Spring Boot 4 microservices
+└── CSM_frontend/        # Frontend — React 20 + TypeScript
 ```
 
 ---
@@ -95,7 +95,7 @@ SentinelCore/
 ### Backend setup
 
 ```bash
-cd SentinelCore-SecureOps
+cd CSM_backend/SecureOps
 ./mvnw clean install
 ./mvnw spring-boot:run
 ```
@@ -105,7 +105,7 @@ Configure your local environment in `application.yml` / `application-local.yml` 
 ### Frontend setup
 
 ```bash
-cd sentinel-frontend
+cd CSM_frontend
 npm install
 npm start
 ```
