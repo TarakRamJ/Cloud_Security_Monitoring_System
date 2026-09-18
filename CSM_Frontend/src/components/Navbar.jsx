@@ -1,8 +1,8 @@
-import React, { useContext, useState, useRef, useEffect } from "react";
+import { useContext, useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import { Shield, LogOut, Mail, Calendar, ShieldCheck, Sparkles } from "lucide-react";
-import { formatDisplayName, getUserInitials } from "../utils/userUtils";
+import { Shield, LogOut, Mail, Calendar, ShieldCheck } from "lucide-react";
+import { formatDisplayName } from "../utils/userUtils";
 
 export const Navbar = ({ onToggleChat, isChatOpen }) => {
   const navigate = useNavigate();
@@ -44,19 +44,7 @@ export const Navbar = ({ onToggleChat, isChatOpen }) => {
 
   return (
     <>
-      <div
-        className="top-navbar"
-        style={{
-          position: "relative",
-          zIndex: 100,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 24px",
-          backgroundColor: "#0D0F12",
-          borderBottom: "1px solid #242933",
-        }}
-      >
+      <div className="top-navbar">
         {/* Left Side: Brand Logo & Status Indicator */}
         <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
           <div

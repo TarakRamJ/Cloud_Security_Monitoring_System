@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext, AuthProvider } from './context/AuthContext';
 
@@ -17,73 +17,70 @@ import RequestsPage from './pages/RequestsPage';
 import { AuditPage } from './pages/AuditPage';
 import { CompliancePage } from './pages/CompliancePage';
 import { ReportsPage } from './pages/ReportsPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import ChatBot from './components/ChatBot';
 
 import './App.css';
 
 const AppRoutes = () => {
   const { user } = useContext(AuthContext);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [initialLoginMode, setInitialLoginMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  if (!user) {
-    if (showAuthModal) {
-      return (
-        <AuthPage 
-          defaultLoginMode={initialLoginMode} 
-          onCancel={() => setShowAuthModal(false)} 
-        />
-      );
-    }
+  /* ── Authenticated shell ── */
+  if (user) {
     return (
-      <LandingPage 
-        onOpenAuth={(isLogin) => {
-          setInitialLoginMode(isLogin);
-          setShowAuthModal(true);
-        }} 
-      />
+      <div className="app-shell" style={{ display: 'flex', position: 'relative', overflow: 'hidden' }}>
+        <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+
+        <div
+          className="main-content-area"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            transition: 'margin-right 0.3s ease',
+            marginRight: isChatOpen ? '380px' : '0px'
+          }}
+        >
+          <Navbar
+            onToggleChat={() => setIsChatOpen((prev) => !prev)}
+            isChatOpen={isChatOpen}
+          />
+
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/alerts" element={<AlertsPage />} />
+            <Route path="/assets" element={<AssetsPage />} />
+            <Route path="/incidents" element={<IncidentsPage />} />
+            <Route path="/vulnerabilities" element={<VulnerabilitiesPage />} />
+            <Route path="/metrics" element={<MetricsPage />} />
+            <Route path="/requests" element={<RequestsPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/audit" element={<AuditPage />} />
+            <Route path="/compliance" element={<CompliancePage />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/signup" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/404" element={<NotFoundPage />} />
+            <Route path="*" element={<Navigate to="/404" replace />} />
+          </Routes>
+        </div>
+
+        <ChatBot isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      </div>
     );
   }
 
+  /* ── Public routes (not logged in) ── */
   return (
-    <div className="app-shell" style={{ display: 'flex', position: 'relative', overflow: 'hidden' }}>
-      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
-      
-      <div 
-        className="main-content-area" 
-        style={{ 
-          flex: 1, 
-          minWidth: 0, 
-          transition: 'margin-right 0.3s ease',
-          marginRight: isChatOpen ? '380px' : '0px'
-        }}
-      >
-        <Navbar 
-          onToggleChat={() => setIsChatOpen((prev) => !prev)} 
-          isChatOpen={isChatOpen} 
-        />
-
-        <Routes>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/alerts" element={<AlertsPage />} />
-          <Route path="/assets" element={<AssetsPage />} />
-          <Route path="/incidents" element={<IncidentsPage />} />
-          <Route path="/vulnerabilities" element={<VulnerabilitiesPage />} />
-          <Route path="/metrics" element={<MetricsPage />} />
-          <Route path="/requests" element={<RequestsPage />} />
-          <Route path="/users" element={<UsersPage />} />
-          <Route path="/audit" element={<AuditPage />} />
-          <Route path="/compliance" element={<CompliancePage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </div>
-
-      {/* Pop-right Drawer Panel */}
-      <ChatBot isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-    </div>
+    <Routes>
+      <Route path="/login" element={<AuthPage />} />
+      <Route path="/signup" element={<AuthPage />} />
+      <Route path="/" element={<LandingPage onOpenAuth={() => {}} />} />
+      <Route path="/404" element={<NotFoundPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 };
 

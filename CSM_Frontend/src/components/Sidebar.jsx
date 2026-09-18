@@ -41,15 +41,16 @@ export const Sidebar = ({ isOpen = true, onToggle }) => {
     <aside className="sidebar-container" style={{
       width: isOpen ? '260px' : '70px',
       height: '100vh',
-      backgroundColor: '#0D0F12',
-      borderRight: '1px solid #242933',
+      backgroundColor: '#0a0c10',
+      borderRight: '1px solid rgba(255, 255, 255, 0.05)',
       display: 'flex',
       flexDirection: 'column',
       color: '#F5F7FA',
       userSelect: 'none',
-      transition: 'width 0.3s ease',
+      transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      zIndex: 105
     }}>
       {/* BRAND HEADER / TOGGLE HEADER */}
 <div style={{ 
@@ -142,7 +143,7 @@ export const Sidebar = ({ isOpen = true, onToggle }) => {
       {/* NAVIGATION LIST */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px 12px 10px' }}>
         {isOpen && (
-          <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#5B6472', textTransform: 'uppercase', padding: '8px 10px 4px 10px', letterSpacing: '0.05em' }}>
+          <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#5B6472', textTransform: 'uppercase', padding: '12px 10px 4px 10px', letterSpacing: '0.05em' }}>
             Platform Navigation
           </div>
         )}

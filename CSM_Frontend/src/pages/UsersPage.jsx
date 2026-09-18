@@ -409,7 +409,7 @@ export const UsersPage = () => {
                 <button type="submit" className="btn-glass btn-green" style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "6px" }}>
                   <Check size={16} /> Save Changes
                 </button>
-                <button type="button" className="btn-glass" style={{ background: "transparent", borderColor: "var(--CSMS-border)" }} onClick={() => setIsEditModalOpen(false)}>
+                <button type="button" className="btn-glass btn-blue" style={{ background: "transparent"}} onClick={() => setIsEditModalOpen(false)}>
                   Cancel
                 </button>
               </div>
@@ -437,9 +437,9 @@ export const UsersPage = () => {
               <button className="btn-glass btn-red" style={{ flex: 1 }} onClick={handleConfirmDelete}>
                 Delete User
               </button>
-              <button className="btn-glass" style={{ flex: 1, background: "transparent", borderColor: "var(--CSMS-border)" }} onClick={() => setIsDeleteModalOpen(false)}>
-                Cancel
-              </button>
+              <button type="button" className="btn-glass btn-blue" style={{ background: "transparent"}} onClick={() => setIsDeleteModalOpen(false)}>
+                  Cancel
+                </button>
             </div>
           </div>
         </div>

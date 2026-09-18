@@ -13,28 +13,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
-
 @Service
 public class AIChatService {
 
     @Value("${sentinelcore.ai.opencode.api-key}")
-    private String opencodeApiKey;
+    private String omniRouteApiKey;
 
-    @Value("${sentinelcore.ai.opencode.model:nemotron-3.5-lightning-free}")
-    private String primaryModel;
+    @Value("${sentinelcore.ai.opencode.model}")
+    private String comboModelId;
 
-    @Value("${sentinelcore.ai.opencode.endpoint:https://opencode.ai/zen/v1/chat/completions}")
+    @Value("${sentinelcore.ai.opencode.endpoint}")
     private String apiEndpoint;
-
-    // List of free fallback models on OpenCode
-    private static final List<String> FALLBACK_MODELS = List.of(
-            "nemotron-3.5-lightning-free",
-            "mimo-v2.5-free",
-            "hy3-free",
-            "laguna-s-2.1-free",
-            "deepseek-v4-flash-free"
-    );
 
     private final ChatOpsToolService opsToolService;
     private final RestTemplate restTemplate = new RestTemplate();
@@ -50,34 +39,40 @@ public class AIChatService {
                 : "OPERATOR";
         String userPrompt = request.getMessage();
 
-        if (opencodeApiKey == null || opencodeApiKey.isBlank() || opencodeApiKey.contains("YOUR_OPENCODE_API_KEY")) {
+        // Fallback to local logic if no API key is set
+        if (omniRouteApiKey == null || omniRouteApiKey.isBlank() || omniRouteApiKey.contains("YOUR_API_KEY")) {
             return generateIntelligentLocalResponse(userPrompt, userRole);
         }
 
-        // Try primary model first, then cycle through other free models if upstream fails
-        for (String model : FALLBACK_MODELS) {
-            try {
-                return callOpenCodeApi(request, currentUser, model);
-            } catch (HttpStatusCodeException httpEx) {
-                System.err.println("OpenCode Model [" + model + "] failed (" + httpEx.getStatusCode() + "). Trying next available model...");
-            } catch (Exception e) {
-                System.err.println("Error calling [" + model + "]: " + e.getMessage());
-            }
+        try {
+            return callOmniRouteGateway(request, currentUser);
+        } catch (HttpStatusCodeException httpEx) {
+            System.err.println("OmniRoute Gateway failed (" + httpEx.getStatusCode() + "): " + httpEx.getResponseBodyAsString());
+        } catch (Exception e) {
+            System.err.println("Error calling OmniRoute: " + e.getMessage());
         }
 
         return generateIntelligentLocalResponse(userPrompt, userRole);
     }
 
-    private ChatResponseDTO callOpenCodeApi(ChatRequestDTO request, User currentUser, String modelName) throws Exception {
+    private ChatResponseDTO callOmniRouteGateway(ChatRequestDTO request, User currentUser) throws Exception {
         String username = currentUser != null ? currentUser.getUsername() : "User";
         String role = currentUser != null && currentUser.getRole() != null ? currentUser.getRole().toString() : "OPERATOR";
 
+        // NEW: Check if the user is asking about a specific asset's status or CPU
+        String specificAssetData = "";
+        String lowerPrompt = request.getMessage().toLowerCase();
+        if (lowerPrompt.contains("cpu") || lowerPrompt.contains("status") || lowerPrompt.contains("telemetry")) {
+            specificAssetData = " | Specific Asset Context: " + opsToolService.getTelemetryFromPrompt(request.getMessage());
+        }
+
         String liveContext = String.format(
-                "[LIVE SYSTEM METRICS: %s | %s | %s | %s]",
+                "[LIVE SYSTEM METRICS: %s | %s | %s | %s%s]",
                 opsToolService.getCriticalAssetsCount(),
                 opsToolService.getCloudAssetsSummary("CLOUD_AWS"),
                 opsToolService.getIncidentSummary(),
-                opsToolService.getVulnerabilitySummary()
+                opsToolService.getVulnerabilitySummary(),
+                specificAssetData // Injected dynamically if requested
         );
 
         String systemInstruction = "You are SentinelBot, the AI Copilot for SentinelCore.\n" +
@@ -94,7 +89,7 @@ public class AIChatService {
                 "   - Keep total response length under 100 words whenever possible.";
 
         ObjectNode rootNode = mapper.createObjectNode();
-        rootNode.put("model", modelName);
+        rootNode.put("model", comboModelId);
 
         ArrayNode messagesArray = rootNode.putArray("messages");
 
@@ -117,11 +112,9 @@ public class AIChatService {
         userMessage.put("role", "user");
         userMessage.put("content", request.getMessage());
 
-        String cleanToken = opencodeApiKey.trim();
-
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + cleanToken);
+        headers.set("Authorization", "Bearer " + omniRouteApiKey.trim());
 
         HttpEntity<String> entity = new HttpEntity<>(mapper.writeValueAsString(rootNode), headers);
         ResponseEntity<String> response = restTemplate.postForEntity(apiEndpoint, entity, String.class);
@@ -182,10 +175,9 @@ public class AIChatService {
             return new ChatResponseDTO(opsToolService.getCloudAssetsSummary(target));
         }
 
-        if (query.contains("cpu") || query.contains("status of") || query.contains("telemetry")) {
-            String[] tokens = prompt.split(" ");
-            String target = tokens[tokens.length - 1].replaceAll("[^a-zA-Z0-9_-]", "");
-            return new ChatResponseDTO(opsToolService.getAssetTelemetry(target.isEmpty() ? "SRV-PROD-01" : target));
+        // NEW: Handles the local fallback exactly like the AI
+        if (query.contains("cpu") || query.contains("status") || query.contains("telemetry")) {
+            return new ChatResponseDTO(opsToolService.getTelemetryFromPrompt(prompt));
         }
 
         if (query.contains("incident") || query.contains("sla") || query.contains("mttr")) {

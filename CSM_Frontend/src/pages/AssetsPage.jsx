@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import { useState, useEffect, useContext, useCallback } from "react";
 import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 import { CustomLoader } from "../components/CustomLoader";
@@ -56,7 +56,7 @@ export const AssetsPage = () => {
     fetchAssets();
     const interval = setInterval(() => {
       fetchAssets();
-    }, 10000);
+    }, 500);
     return () => clearInterval(interval);
   }, [fetchAssets]);
 

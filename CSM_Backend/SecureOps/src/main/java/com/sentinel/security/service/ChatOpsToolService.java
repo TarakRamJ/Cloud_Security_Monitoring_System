@@ -61,6 +61,23 @@ public class ChatOpsToolService {
         return "Total registered assets: " + assets.size();
     }
 
+    // NEW METHOD: Scans the user's prompt for any known asset name
+    public String getTelemetryFromPrompt(String prompt) {
+        String lowerPrompt = prompt.toLowerCase();
+
+        // 1. Try to find an exact asset name match anywhere in the sentence
+        for (Asset asset : assetRepository.findAll()) {
+            if (asset.getName() != null && lowerPrompt.contains(asset.getName().toLowerCase())) {
+                return getAssetTelemetry(asset.getName());
+            }
+        }
+
+        // 2. Fallback to the old "last word" logic if no explicit match is found
+        String[] tokens = prompt.split(" ");
+        String target = tokens[tokens.length - 1].replaceAll("[^a-zA-Z0-9_-]", "");
+        return getAssetTelemetry(target.isEmpty() ? "SRV-PROD-01" : target);
+    }
+
     public String getAssetTelemetry(String assetNameOrId) {
         Optional<Asset> assetOpt = assetRepository.findAll().stream()
                 .filter(a -> a.getName().equalsIgnoreCase(assetNameOrId) ||

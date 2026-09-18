@@ -25,6 +25,10 @@ export const StatusBadge = ({ status }) => {
       return 'badge-critical';
     }
 
+    if(['OFFLINE', 'DISCONNECTED'].includes(s)) {
+      return 'badge-disconnected';
+    }
+
     // Other Specific Types
     if (s === 'PASSWORD_CHANGE') return 'badge-purple';
     if (s === 'GENERIC_ACTION') return 'badge-teal';
