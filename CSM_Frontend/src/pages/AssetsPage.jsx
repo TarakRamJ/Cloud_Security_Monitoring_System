@@ -275,6 +275,7 @@ export const AssetsPage = () => {
                   <option value="HEALTHY">HEALTHY</option>
                   <option value="WARNING">WARNING</option>
                   <option value="CRITICAL">CRITICAL</option>
+                  <option value="OFFLINE">OFFLINE</option>
                 </select>
               </div>
             </div>
@@ -319,6 +320,7 @@ export const AssetsPage = () => {
               <th>Name</th>
               <th>IP Address</th>
               <th>Type</th>
+              <th>Last Seen</th>
               <th>Health Status</th>
               <th>Actions</th>
             </tr>
@@ -330,6 +332,18 @@ export const AssetsPage = () => {
                 <td>{asset.name}</td>
                 <td>{asset.ip}</td>
                 <td>{asset.type}</td>
+                <td>
+                  {asset.lastSeen ? (
+                    <span
+                      style={{ fontSize: "0.85rem", color: "var(--CSMS-text-muted)" }}
+                      title={new Date(asset.lastSeen).toLocaleString()}
+                    >
+                      {new Date(asset.lastSeen).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "0.85rem", color: "var(--CSMS-text-muted)" }}>Never</span>
+                  )}
+                </td>
                 <td>
                   <StatusBadge status={asset.status} />
                 </td>
@@ -496,6 +510,22 @@ export const AssetsPage = () => {
                     fontSize: "0.78rem",
                     color: "#8c9ba5",
                     display: "block",
+                  }}
+                >
+                  LAST SEEN
+                </span>
+                <span>
+                  {selectedAsset.lastSeen
+                    ? new Date(selectedAsset.lastSeen).toLocaleString()
+                    : "Never"}
+                </span>
+              </div>
+              <div>
+                <span
+                  style={{
+                    fontSize: "0.78rem",
+                    color: "#8c9ba5",
+                    display: "block",
                     marginBottom: "4px",
                   }}
                 >
@@ -625,6 +655,7 @@ export const AssetsPage = () => {
                     <option value="HEALTHY">HEALTHY</option>
                     <option value="WARNING">WARNING</option>
                     <option value="CRITICAL">CRITICAL</option>
+                    <option value="OFFLINE">OFFLINE</option>
                   </select>
                 </div>
               </div>

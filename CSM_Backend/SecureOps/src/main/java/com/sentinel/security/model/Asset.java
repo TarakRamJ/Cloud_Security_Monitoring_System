@@ -36,6 +36,9 @@ public class    Asset {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
+    @Column(name = "last_seen")
+    private OffsetDateTime lastSeen;
+
     public enum AssetType { SERVER, CLOUD_AWS, CLOUD_AZURE, K8S_POD }
     public enum HealthStatus { HEALTHY, WARNING, CRITICAL,OFFLINE }
 
@@ -61,6 +64,9 @@ public class    Asset {
     public void setType(AssetType type) { this.type = type; }
     public HealthStatus getStatus() { return status; }
     public void setStatus(HealthStatus status) { this.status = status; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public OffsetDateTime getLastSeen() { return lastSeen; }
+    public void setLastSeen(OffsetDateTime lastSeen) { this.lastSeen = lastSeen; }
 }

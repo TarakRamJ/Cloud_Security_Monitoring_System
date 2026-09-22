@@ -1,7 +1,9 @@
 package com.sentinel.security.service;
 
+import com.sentinel.security.dto.TelemetryPayload;
 import com.sentinel.security.model.Alert;
 import com.sentinel.security.model.Asset;
+import com.sentinel.security.model.Incident;
 import com.sentinel.security.model.PerformanceMetric;
 import com.sentinel.security.repo.AlertRepository;
 import com.sentinel.security.repo.AssetRepository;
@@ -9,10 +11,10 @@ import com.sentinel.security.repo.PerformanceMetricRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 import java.util.UUID;
 
 @Service
@@ -22,7 +24,6 @@ public class InfrastructureMonitoringService {
     private final PerformanceMetricRepository metricRepository;
     private final AlertRepository alertRepository;
     private final IncidentService incidentService;
-    private final Random random = new Random();
 
     public InfrastructureMonitoringService(AssetRepository assetRepository,
                                            PerformanceMetricRepository metricRepository,
@@ -34,147 +35,176 @@ public class InfrastructureMonitoringService {
         this.incidentService = incidentService;
     }
 
-    //Check the performance of all assets for every 15 seconds
-    @Scheduled(fixedRate = 15000)
+    // Process real telemetry data from agents
     @Transactional
-    public void scrapeInfrastructureTelemetry() {
-        List<Asset> assets = assetRepository.findAll();
+    public void processAgentTelemetry(TelemetryPayload payload) {
+        if (payload.getAssetId() == null) return;
 
-        for (Asset asset : assets) {
+        Optional<Asset> assetOpt = assetRepository.findById(payload.getAssetId());
+        if (assetOpt.isEmpty()) {
+            return; // Asset doesn't exist, ignore
+        }
 
-            //Random Values for the performance matric
-            float cpu = random.nextFloat() * 100;
-            float memory = random.nextFloat() * 100;
-            float disk = random.nextFloat() * 100;
-            float network = random.nextFloat() * 100;
+        Asset asset = assetOpt.get();
+        // Update asset last seen timestamp
+        asset.setLastSeen(OffsetDateTime.now());
 
-            //Checking if the matric already exist so we can update
+        // If it was offline, mark it as Healthy pending metric evaluation
+        if (asset.getStatus() == Asset.HealthStatus.OFFLINE) {
+            asset.setStatus(Asset.HealthStatus.HEALTHY);
+        }
+
+        assetRepository.save(asset);
+
+        // Check if payload contains an alert
+        if (payload.getAlertType() != null && !payload.getAlertType().isEmpty()) {
+            // Handle explicit agent alert (e.g., USB_DETECTED, SOFTWARE_INSTALLED)
+            handleAgentAlert(asset, payload.getAlertType(), payload.getAlertDescription());
+        } else {
+            // Handle regular metrics
             Optional<PerformanceMetric> existingMetric = metricRepository.findByAssetId(asset.getAssetId());
-
-            //New Metric
             PerformanceMetric metric;
 
-            //If already present
-            if(existingMetric.isPresent()){
-
-                //Update the matric values
+            if (existingMetric.isPresent()) {
                 metric = existingMetric.get();
-
-                metric.setCpuUsage(cpu);
-                metric.setMemoryUsage(memory);
-                metric.setDiskUsage(disk);
-                metric.setNetworkUsage(network);
+                metric.setCpuUsage(payload.getCpuUsage());
+                metric.setMemoryUsage(payload.getMemoryUsage());
+                metric.setDiskUsage(payload.getDiskUsage());
+                metric.setNetworkUsage(payload.getNetworkUsage());
                 metric.setTimestamp(OffsetDateTime.now());
-
-            }
-            // If asset not have a performace matric we will add a new one
-            else{
-
-                //Creating a new Metric
+            } else {
                 metric = new PerformanceMetric(
                         asset.getAssetId(),
-                        cpu,
-                        memory,
-                        disk,
-                        network);
-
+                        payload.getCpuUsage(),
+                        payload.getMemoryUsage(),
+                        payload.getDiskUsage(),
+                        payload.getNetworkUsage());
             }
 
-            //Saves the metric
             metricRepository.save(metric);
-
-            //Check the Performance Metric to know its fine
             evaluateRulesAndHealth(asset, metric);
         }
     }
 
-    //Evaluating the asset's performance matric
+    private void handleAgentAlert(Asset asset, String alertType, String description) {
+        // Find if this specific alert combination already exists today to avoid spamming
+        // For simplicity, we just trigger it and rely on limit maintenance
+
+        Alert.AlertSeverity severity = Alert.AlertSeverity.HIGH;
+        if ("USB_DETECTED".equals(alertType)) {
+            severity = Alert.AlertSeverity.CRITICAL; // High risk in enterprise
+        }
+
+        String solution = "Investigate " + alertType + ": " + description;
+
+        Alert alert = new Alert(
+            asset.getAssetId(),
+            alertType,
+            0.0f, // No specific violation value for categorical alerts
+            asset.getName(),
+            severity,
+            solution
+        );
+
+        alertRepository.save(alert);
+        maintainAlertLimit();
+
+        // Possibly elevate asset status and create incident
+        if (severity == Alert.AlertSeverity.CRITICAL && asset.getStatus() != Asset.HealthStatus.CRITICAL) {
+            asset.setStatus(Asset.HealthStatus.CRITICAL);
+            asset.setUpdatedAt(OffsetDateTime.now());
+            assetRepository.save(asset);
+        }
+    }
+
+    // Checking if assets are offline (not seen for > 30 seconds)
+    @Scheduled(fixedRate = 15000)
+    @Transactional
+    public void checkAssetOfflineStatus() {
+        List<Asset> assets = assetRepository.findAll();
+        OffsetDateTime thresholdTime = OffsetDateTime.now().minusSeconds(45); // 45 sec threshold
+
+        for (Asset asset : assets) {
+            // If we have a lastSeen, check if it's older than threshold
+            if (asset.getLastSeen() != null && asset.getLastSeen().isBefore(thresholdTime)) {
+                if (asset.getStatus() != Asset.HealthStatus.OFFLINE) {
+                    asset.setStatus(Asset.HealthStatus.OFFLINE);
+                    asset.setUpdatedAt(OffsetDateTime.now());
+                    assetRepository.save(asset);
+                    System.out.println("Asset marked offline due to inactivity: " + asset.getName());
+                }
+            } else if (asset.getLastSeen() == null) {
+                // If it never checked in, optionally mark offline or leave as is
+                // We'll mark offline if it's not newly created
+                if (asset.getCreatedAt() != null && asset.getCreatedAt().isBefore(thresholdTime) && asset.getStatus() != Asset.HealthStatus.OFFLINE) {
+                    asset.setStatus(Asset.HealthStatus.OFFLINE);
+                    asset.setUpdatedAt(OffsetDateTime.now());
+                    assetRepository.save(asset);
+                }
+            }
+        }
+    }
+
     private void evaluateRulesAndHealth(Asset asset, PerformanceMetric metric) {
         Asset.HealthStatus targetStatus = Asset.HealthStatus.HEALTHY;
 
-        //Checking each matric health if any one is BAD/CRITICAL the targetStatus would be CRITICAL
         targetStatus = checkMetricThreshold(asset, "CPU", metric.getCpuUsage(), targetStatus);
         targetStatus = checkMetricThreshold(asset, "Memory", metric.getMemoryUsage(), targetStatus);
         targetStatus = checkMetricThreshold(asset, "Disk", metric.getDiskUsage(), targetStatus);
 
-        //Only update if the status is changed
         if (asset.getStatus() != targetStatus) {
             asset.setStatus(targetStatus);
             asset.setUpdatedAt(OffsetDateTime.now());
             assetRepository.save(asset);
 
-            //If the status is CRITICAL we need create Incident
             if (targetStatus == Asset.HealthStatus.CRITICAL) {
                 incidentService.triggerIncidentFromFailure(asset, metric);
             }
         }
     }
 
-    //Function to check each matric value with a threshold
     private Asset.HealthStatus checkMetricThreshold(Asset asset, String metricName, float value, Asset.HealthStatus currentEvaluatedStatus) {
         Asset.HealthStatus nextStatus = currentEvaluatedStatus;
 
         if (value >= 90.0f) {
             nextStatus = Asset.HealthStatus.CRITICAL;
-
-            //Here matric reached the critical threshold so create alert with CRITICAL Severity
             triggerAlertIfNew(asset, metricName, value, Alert.AlertSeverity.CRITICAL);
         } else if (value >= 75.0f) {
             if (nextStatus != Asset.HealthStatus.CRITICAL) {
                 nextStatus = Asset.HealthStatus.WARNING;
             }
-
-            //Here matric reached the high threshold so create alert with HIGH Severity
             triggerAlertIfNew(asset, metricName, value, Alert.AlertSeverity.HIGH);
         } else {
-
-            //Here matric is less any threshold so the issue/problem is resolved
             resolveAlertsIfAny(asset.getAssetId(), metricName);
         }
 
-        //Return the status for Evaluation
         return nextStatus;
     }
 
-    //If there is alert and this asset's alert is new then we need to create alert
     private void triggerAlertIfNew(Asset asset, String metricName, float value, Alert.AlertSeverity severity) {
-
-        //retrieving all alerts with the required assetId and merticName
         List<Alert> activeAlerts = alertRepository.findByAssetId(asset.getAssetId());
-
-        //Checking is it new or already exist
         boolean alreadyFired = activeAlerts.stream().anyMatch(a -> a.getMetricName().equalsIgnoreCase(metricName));
 
-        //If the alert is new
         if (!alreadyFired) {
-
-            //----Temporary Function for prototype----
             maintainAlertLimit();
 
-            //Creating alert
-            String solution=new String();
-            if(metricName.equals("CPU")){
-                solution="Auto Scaling";
-            }else if(metricName.equals("Memory")){
-                solution="Stop unnecessary processes";
-            }else{
-                solution="Clean Up";
+            String solution = "";
+            if (metricName.equals("CPU")) {
+                solution = "Auto Scaling";
+            } else if (metricName.equals("Memory")) {
+                solution = "Stop unnecessary processes";
+            } else {
+                solution = "Clean Up";
             }
-            Alert alert = new Alert(asset.getAssetId(), metricName, value, asset.getName(), severity,solution);
 
-            //save alert
+            Alert alert = new Alert(asset.getAssetId(), metricName, value, asset.getName(), severity, solution);
             alertRepository.save(alert);
         }
     }
 
-    //If there is an alert the matric value get down means getting to SAFE state
     @Transactional
-    private void resolveAlertsIfAny(UUID assetId, String metricName) {
-
-        //Retrieve All Not resolved alerts of specific AssetId
+    public void resolveAlertsIfAny(UUID assetId, String metricName) {
         List<Alert> activeAlerts = alertRepository.findByAssetId(assetId);
-
-        //filter alerts with same metricName and set resolved true
         activeAlerts.stream()
                 .filter(a -> a.getMetricName().equalsIgnoreCase(metricName))
                 .forEach(alertRepository::delete);
@@ -184,7 +214,9 @@ public class InfrastructureMonitoringService {
         long totalAlerts = alertRepository.count();
         if (totalAlerts >= 70) {
             List<Alert> alerts = alertRepository.findAllByOrderByCreatedAtAsc();
-            alertRepository.delete(alerts.get(0));
+            if (!alerts.isEmpty()) {
+                alertRepository.delete(alerts.get(0));
+            }
         }
     }
 }
