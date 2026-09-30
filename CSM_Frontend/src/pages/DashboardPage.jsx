@@ -609,7 +609,7 @@ export const DashboardPage = () => {
           })}
 
           {/* 10th Card: Last Scan */}
-          {[{ label: "LAST SCAN", val: "2h ago", icon: BugIcon }].map((s) => {
+          {[{ label: "LAST SCAN", val: data?.lastTrivyScan ? new Date(data.lastTrivyScan).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "None", icon: BugIcon }].map((s) => {
             const Icon = s.icon;
             return (
               <Box

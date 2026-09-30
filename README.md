@@ -7,7 +7,7 @@ CSMS-IMA SecureOps is a cloud-native platform for monitoring, auditing, and secu
 ![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4-brightgreen?logo=springboot)
 ![React](https://img.shields.io/badge/React-20-61DAFB?logo=react&logoColor=black)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-DB-336791?logo=postgresql&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-DB-4479A1?logo=mysql&logoColor=white)
 
 ---
 
@@ -37,7 +37,7 @@ CSMS-IMA follows a 9-layer architecture:
 4. Core Services          → MonitoringService, VulnerabilityService, ComplianceService
 5. Domain Layer           → Java 25, Spring Boot 4, Spring Security, Spring Data JPA
 6. Event Layer            → Apache Kafka, Event Sourcing, Audit Trail, Notifications
-7. Data Layer             → PostgreSQL, Redis Cache, OpenSearch, S3/Blob
+7. Data Layer             → MySQL, Redis Cache, OpenSearch, S3/Blob
 8. Security               → Keycloak IAM, RBAC, Encryption, PCI DSS, Audit
 9. Infrastructure         → Docker, Kubernetes, AWS/Azure, Prometheus, Grafana
 ```
@@ -62,7 +62,7 @@ Infrastructure Telemetry → Security Monitoring → Incident Detection
 |---|---|
 | Frontend | React 20, TypeScript, Material UI, Recharts |
 | Backend | Java 25, Spring Boot 4, Spring Cloud Gateway, Spring Security, Spring Data JPA |
-| Database | PostgreSQL, Redis (cache) |
+| Database | MySQL 8+, Redis (cache) |
 | Messaging | Apache Kafka (event-driven architecture) |
 | Identity & Access | Keycloak (IAM, OAuth2, JWT, RBAC) |
 | Cloud | AWS (EC2, EKS, RDS, CloudWatch, S3) **or** Azure (AKS, SQL, Monitor, Blob) |
@@ -86,7 +86,7 @@ CSM System/
 ### Prerequisites
 - Java 25 (JDK)
 - Node.js 20+ and npm
-- PostgreSQL 15+
+- MySQL 8+
 - Redis
 - Apache Kafka
 - Keycloak (for IAM/RBAC)

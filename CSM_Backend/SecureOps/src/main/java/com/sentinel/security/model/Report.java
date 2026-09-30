@@ -1,8 +1,6 @@
 package com.sentinel.security.model;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -21,8 +19,8 @@ public class Report {
     private String status;
     private LocalDateTime createdDate;
 
-    @JdbcTypeCode(SqlTypes.BINARY)
-    @Column(name = "pdf_data")
+    @Lob
+    @Column(name = "pdf_data", columnDefinition = "LONGBLOB")
     private byte[] pdfData;
 
     public Report() {}

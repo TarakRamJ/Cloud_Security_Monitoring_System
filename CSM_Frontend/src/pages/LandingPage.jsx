@@ -790,7 +790,7 @@ export const LandingPage = () => {
                     color: "#f59e0b",
                   },
                   {
-                    name: "postgres-db",
+                    name: "mysql-db",
                     type: "Primary",
                     status: "Healthy",
                     cpu: "22%",
@@ -1319,7 +1319,7 @@ export const LandingPage = () => {
                 }}
               >
                 {activeStep === 0 &&
-                  "Select any environment: AWS EKS, Azure AKS, self-hosted Docker instances, or high-throughput PostgreSQL databases."}
+                  "Select any environment: AWS EKS, Azure AKS, self-hosted Docker instances, or high-throughput MySQL databases."}
                 {activeStep === 1 &&
                   "Kernel-level eBPF probes stream logs and telemetry directly to the Kafka bus without degrading application performance."}
                 {activeStep === 2 &&
@@ -1329,7 +1329,7 @@ export const LandingPage = () => {
               {/* Feature pills */}
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 {(activeStep === 0
-                  ? ["AWS EKS", "Azure AKS", "Docker", "PostgreSQL"]
+                  ? ["AWS EKS", "Azure AKS", "Docker", "MySQL"]
                   : activeStep === 1
                     ? [
                         "eBPF Probes",
@@ -1587,7 +1587,7 @@ export const LandingPage = () => {
                   },
                   {
                     time: "14:22:45",
-                    msg: "Postgres replica snapshot verified",
+                    msg: "MySQL replica snapshot verified",
                     status: "Healthy",
                     color: "#52c41a",
                   },
@@ -1783,7 +1783,7 @@ export const LandingPage = () => {
                   "AWS EC2",
                   "EKS",
                   "Azure AKS",
-                  "PostgreSQL",
+                  "MySQL",
                   "Redis",
                   "Docker",
                   "Kubernetes",
@@ -1999,7 +1999,7 @@ export const LandingPage = () => {
                 links: [
                   "Kubernetes / Helm",
                   "AWS & Azure",
-                  "PostgreSQL Monitoring",
+                  "MySQL Monitoring",
                   "Kafka Streams",
                 ],
               },
