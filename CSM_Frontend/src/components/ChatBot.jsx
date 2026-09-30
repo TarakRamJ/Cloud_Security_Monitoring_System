@@ -7,7 +7,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import API from "../services/api";
+import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import { formatDisplayName } from "../utils/userUtils";
 
@@ -47,11 +47,17 @@ export default function ChatBot({ isOpen, onClose }) {
     setLoading(true);
 
     try {
-      const res = await API.post(
-        "/api/chat",
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        "http://localhost:8080/api/chat",
         {
           message: query,
           history: updatedMessages.slice(-6),
+        },
+        {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
         }
       );
 

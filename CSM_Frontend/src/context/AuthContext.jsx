@@ -6,28 +6,23 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    const username = localStorage.getItem('username') || sessionStorage.getItem('username');
-    const role = localStorage.getItem('role') || sessionStorage.getItem('role');
-    const email = localStorage.getItem('email') || sessionStorage.getItem('email');
-    const createdAt = localStorage.getItem('createdAt') || sessionStorage.getItem('createdAt');
+    const username = localStorage.getItem('username');
+    const role = localStorage.getItem('role');
+    const email = localStorage.getItem('email');
+    const createdAt = localStorage.getItem('createdAt');
+    const token = localStorage.getItem('token');
     
     if (token && username) {
       setUser({ username, role, email, createdAt });
     }
   }, []);
 
-  const login = (data, rememberMe = true) => {
-    // Purge any stale tokens from both storages before storing the new token
-    localStorage.clear();
-    sessionStorage.clear();
-
-    const targetStorage = rememberMe ? localStorage : sessionStorage;
-    targetStorage.setItem('token', data.token);
-    targetStorage.setItem('username', data.username);
-    targetStorage.setItem('role', data.role);
-    if (data.email) targetStorage.setItem('email', data.email);
-    if (data.createdAt) targetStorage.setItem('createdAt', data.createdAt);
+  const login = (data) => {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('username', data.username);
+    localStorage.setItem('role', data.role);
+    if (data.email) localStorage.setItem('email', data.email);
+    if (data.createdAt) localStorage.setItem('createdAt', data.createdAt);
 
     setUser({ 
       username: data.username, 
@@ -39,7 +34,6 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.clear();
-    sessionStorage.clear();
     setUser(null);
   };
 
