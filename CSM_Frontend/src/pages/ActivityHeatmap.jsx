@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, memo } from "react";
 import {
   Box,
   Card,
   CardContent,
   Typography,
   Skeleton,
-  Tooltip as MuiTooltip,
 } from "@mui/material";
 import { TrendingUp as TrendUpIcon, TrendingDown as TrendDownIcon } from "@mui/icons-material";
 import API from "../services/api";
@@ -60,8 +59,18 @@ function buildWeeks(days) {
       const entry = byDate[key];
       const count = entry?.count ?? 0;
 
+      // Pre-compute formatted date once during data load to avoid 371 date formatting calls per render
+      const formattedDate = cursor.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+
       week.push({
         date: key,
+        formattedDate,
         dateObj: new Date(cursor),
         count: count,
         level: inRange ? (entry?.level ?? getLevelFromCount(count)) : -1,
@@ -117,7 +126,7 @@ function buildQuarterHeader(weeks) {
   return labels;
 }
 
-export const ActivityHeatmap = ({ days = 365, refreshKey = 0, pollInterval = 10000 }) => {
+export const ActivityHeatmap = memo(({ days = 365, refreshKey = 0, pollInterval = 30000 }) => {
   const [heatmap, setHeatmap] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -148,7 +157,12 @@ export const ActivityHeatmap = ({ days = 365, refreshKey = 0, pollInterval = 100
 
     let timer = null;
     if (pollInterval > 0) {
-      timer = setInterval(() => fetchData(true), pollInterval);
+      timer = setInterval(() => {
+        // Only fetch if tab is active/visible
+        if (!document.hidden) {
+          fetchData(true);
+        }
+      }, pollInterval);
     }
 
     return () => {
@@ -330,8 +344,23 @@ export const ActivityHeatmap = ({ days = 365, refreshKey = 0, pollInterval = 100
                             ? "transparent"
                             : LEVEL_COLORS[day.level] ?? LEVEL_COLORS[0];
 
-                          const cell = (
+                          if (isPadding) {
+                            return (
+                              <Box
+                                key={dIdx}
+                                sx={{
+                                  width: "100%",
+                                  aspectRatio: "1 / 1",
+                                  mb: "2px",
+                                }}
+                              />
+                            );
+                          }
+
+                          return (
                             <Box
+                              key={dIdx}
+                              title={`${day.count} action${day.count === 1 ? "" : "s"} on ${day.formattedDate}`}
                               sx={{
                                 width: "100%",
                                 aspectRatio: "1 / 1",
@@ -339,35 +368,11 @@ export const ActivityHeatmap = ({ days = 365, refreshKey = 0, pollInterval = 100
                                 borderRadius: "50%",
                                 backgroundColor: color,
                                 opacity: opacity,
-                                transition: "all 0.12s ease-in-out",
-                                cursor: isPadding ? "default" : "pointer",
-                                "&:hover": isPadding
-                                  ? {}
-                                  : { transform: "scale(1.25)", zIndex: 2 },
+                                cursor: "pointer",
+                                transition: "transform 0.1s ease",
+                                "&:hover": { transform: "scale(1.3)", zIndex: 2 },
                               }}
                             />
-                          );
-
-                          if (isPadding) return <Box key={dIdx}>{cell}</Box>;
-
-                          return (
-                            <MuiTooltip
-                              key={dIdx}
-                              title={`${day.count} action${day.count === 1 ? "" : "s"} on ${parseUTCDate(day.date).toLocaleDateString(undefined, {
-                                weekday: "short",
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                                timeZone: "UTC",
-                              })}`}
-                              arrow
-                              slotProps={{
-                                tooltip: { sx: { bgcolor: "#1f2937", borderRadius: 1, fontSize: "0.75rem" } },
-                                arrow: { sx: { color: "#1f2937" } },
-                              }}
-                            >
-                              {cell}
-                            </MuiTooltip>
                           );
                         })}
                       </Box>
@@ -424,4 +429,4 @@ export const ActivityHeatmap = ({ days = 365, refreshKey = 0, pollInterval = 100
       </CardContent>
     </Card>
   );
-};
+});

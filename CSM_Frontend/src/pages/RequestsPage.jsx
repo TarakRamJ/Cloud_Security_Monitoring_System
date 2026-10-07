@@ -2,26 +2,28 @@ import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { CustomLoader } from '../components/CustomLoader';
 import { StatusBadge } from '../components/StatusBadge';
-import { 
-  getAllAdminRequests, 
-  getMyRequests, 
-  submitAdminRequest, 
-  processAdminRequest 
+import {
+  getAllAdminRequests,
+  getMyRequests,
+  submitAdminRequest,
+  processAdminRequest
 } from '../services/api';
-import { 
-  ClipboardList, 
-  History, 
-  CheckCircle2, 
-  XCircle, 
-  Eye, 
-  X, 
-  AlertCircle, 
+import {
+  ClipboardList,
+  History,
+  CheckCircle2,
+  XCircle,
+  Eye,
+  AlertCircle,
   Send,
   MessageSquare,
   Key,
   Server,
-  Activity
+  Activity,
+  RefreshCw,
 } from 'lucide-react';
+import { Modal, ModalFooter } from '../components/Modal';
+import { ModalField, ModalSection } from '../components/ModalComponents';
 
 export default function RequestsPage() {
   const { user } = useContext(AuthContext);
@@ -169,7 +171,7 @@ export default function RequestsPage() {
       const parsed = JSON.parse(rawDetails);
       if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: '#0d131d', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--CSMS-border)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'var(--CSMS-bg-dark)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--CSMS-border)' }}>
             {Object.entries(parsed).map(([key, val]) => (
               <div key={key}>
                 <span style={{ fontSize: '0.68rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>
@@ -188,7 +190,7 @@ export default function RequestsPage() {
     }
 
     return (
-      <div style={{ background: '#0d131d', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--CSMS-border)', color: '#e2e8f0', fontSize: '0.85rem', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+      <div style={{ background: 'var(--CSMS-bg-dark)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--CSMS-border)', color: '#e2e8f0', fontSize: '0.85rem', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
         {rawDetails}
       </div>
     );
@@ -272,27 +274,45 @@ export default function RequestsPage() {
 
   return (
     <div className="page-container">
-      {/* HEADER BAR */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ClipboardList size={20} color="var(--CSMS-purple)" />
-            <h3 style={{ color: '#fff', margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>
-              {isAdmin ? 'Admin Approval Queue' : 'Requests & Messages'}
-            </h3>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(139, 92, 246, 0.12)',
+              border: '1px solid rgba(139, 92, 246, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ClipboardList size={20} color="#8b5cf6" />
           </div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--CSMS-text-muted)', marginTop: '3px', display: 'block' }}>
-            Last updated: {lastRefreshed.toLocaleTimeString()}
-          </span>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.4rem' }}>
+              {isAdmin ? 'Admin Approval Queue' : 'Requests & Messages'}
+            </h2>
+            <div style={{ fontSize: '0.8rem', color: 'var(--CSMS-text-muted)', marginTop: '2px' }}>
+              Real-time authorization requests, approvals, and administrator messaging
+            </div>
+          </div>
         </div>
 
-        <button 
-          className="btn-glass btn-purple"
-          onClick={() => setShowHistory(!showHistory)}
-          style={{ padding: '6px 12px', fontSize: '0.82rem' }}
-        >
-          <History size={14} /> {showHistory ? 'Hide Request History' : 'View Request History'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn-white" onClick={() => fetchRequests(false)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <RefreshCw size={14} /> Refresh
+          </button>
+          <button
+            className="btn-purple"
+            onClick={() => setShowHistory(!showHistory)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <History size={14} /> {showHistory ? 'Hide History' : 'View History'}
+          </button>
+        </div>
       </div>
 
       {/* FEEDBACK BANNER */}
@@ -300,56 +320,98 @@ export default function RequestsPage() {
         <div
           className="form-panel"
           style={{
-            marginBottom: '16px',
-            padding: '10px 14px',
+            marginBottom: '20px',
+            padding: '12px 16px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            borderLeft: `3px solid ${bannerMessage.type === 'error' ? '#f5222d' : '#10b981'}`,
-            backgroundColor: bannerMessage.type === 'error' ? 'rgba(245, 34, 45, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+            gap: '10px',
+            borderLeft: `4px solid ${bannerMessage.type === 'error' ? 'var(--CSMS-red)' : 'var(--CSMS-green)'}`,
+            backgroundColor: bannerMessage.type === 'error' ? 'var(--CSMS-red-dim)' : 'var(--CSMS-green-dim)',
           }}
         >
-          {bannerMessage.type === 'error' ? <AlertCircle size={16} color="#f5222d" /> : <CheckCircle2 size={16} color="#10b981" />}
-          <span style={{ color: '#fff', fontSize: '0.85rem' }}>{bannerMessage.text}</span>
+          {bannerMessage.type === 'error' ? <AlertCircle size={18} color="#ef4444" /> : <CheckCircle2 size={18} color="#10b981" />}
+          <span style={{ color: '#ffffff', fontSize: '0.88rem' }}>{bannerMessage.text}</span>
         </div>
       )}
 
       {/* SUBMISSION FORM CONTAINER */}
       {!isAdmin && (
-        <div className="form-panel" style={{ marginBottom: '20px', padding: '16px' }}>
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--CSMS-border)', paddingBottom: '10px', marginBottom: '16px' }}>
+        <div className="form-panel" style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--CSMS-border)', paddingBottom: '12px', marginBottom: '18px', flexWrap: 'wrap' }}>
             {!isDevOps && (
-              <button type="button" className={activeTab === 'CREATE_ASSET' ? 'btn-primary' : 'btn-glass btn-white'} onClick={() => handleTabChange('CREATE_ASSET')} style={{ padding: '6px 12px', fontSize: '0.82rem' }}>
+              <button
+                type="button"
+                className={activeTab === 'CREATE_ASSET' ? 'btn-primary' : 'btn-white'}
+                onClick={() => handleTabChange('CREATE_ASSET')}
+                style={{ padding: '6px 12px', fontSize: '0.82rem' }}
+              >
                 <Server size={14} /> Request Asset Creation
               </button>
             )}
-            <button type="button" className={activeTab === 'GENERIC_ACTION' ? 'btn-primary' : 'btn-glass btn-white'} onClick={() => handleTabChange('GENERIC_ACTION')} style={{ padding: '6px 12px', fontSize: '0.82rem' }}>
+            <button
+              type="button"
+              className={activeTab === 'GENERIC_ACTION' ? 'btn-primary' : 'btn-white'}
+              onClick={() => handleTabChange('GENERIC_ACTION')}
+              style={{ padding: '6px 12px', fontSize: '0.82rem' }}
+            >
               <Activity size={14} /> Request Custom Action
             </button>
-            <button type="button" className={activeTab === 'PASSWORD_CHANGE' ? 'btn-primary' : 'btn-glass btn-white'} onClick={() => handleTabChange('PASSWORD_CHANGE')} style={{ padding: '6px 12px', fontSize: '0.82rem' }}>
+            <button
+              type="button"
+              className={activeTab === 'PASSWORD_CHANGE' ? 'btn-primary' : 'btn-white'}
+              onClick={() => handleTabChange('PASSWORD_CHANGE')}
+              style={{ padding: '6px 12px', fontSize: '0.82rem' }}
+            >
               <Key size={14} /> Password Reset
             </button>
-            <button type="button" className={activeTab === 'MESSAGE' ? 'btn-primary' : 'btn-glass btn-white'} onClick={() => handleTabChange('MESSAGE')} style={{ padding: '6px 12px', fontSize: '0.82rem' }}>
+            <button
+              type="button"
+              className={activeTab === 'MESSAGE' ? 'btn-primary' : 'btn-white'}
+              onClick={() => handleTabChange('MESSAGE')}
+              style={{ padding: '6px 12px', fontSize: '0.82rem' }}
+            >
               <MessageSquare size={14} /> Message Admin
             </button>
           </div>
 
           {activeTab === 'CREATE_ASSET' && !isDevOps && (
             <form onSubmit={handleAssetSubmit} noValidate>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-grid">
                 <div className="form-field">
                   <label>ASSET NAME</label>
-                  <input type="text" placeholder="AWS-K8s-Worker-Node" className="form-input" value={assetForm.name} onChange={(e) => { setAssetForm({...assetForm, name: e.target.value}); if (formErrors.name) setFormErrors({...formErrors, name: null}); }} />
+                  <input
+                    type="text"
+                    placeholder="e.g. AWS-K8s-Worker-Node"
+                    className={`form-input ${formErrors.name ? 'is-invalid' : ''}`}
+                    value={assetForm.name}
+                    onChange={(e) => {
+                      setAssetForm({ ...assetForm, name: e.target.value });
+                      if (formErrors.name) setFormErrors({ ...formErrors, name: null });
+                    }}
+                  />
                   {formErrors.name && <span className="field-error-msg">{formErrors.name}</span>}
                 </div>
                 <div className="form-field">
                   <label>IP ADDRESS</label>
-                  <input type="text" placeholder="192.168.1.50" className="form-input" value={assetForm.ip} onChange={(e) => { setAssetForm({...assetForm, ip: e.target.value}); if (formErrors.ip) setFormErrors({...formErrors, ip: null}); }} />
+                  <input
+                    type="text"
+                    placeholder="e.g. 192.168.1.50"
+                    className={`form-input ${formErrors.ip ? 'is-invalid' : ''}`}
+                    value={assetForm.ip}
+                    onChange={(e) => {
+                      setAssetForm({ ...assetForm, ip: e.target.value });
+                      if (formErrors.ip) setFormErrors({ ...formErrors, ip: null });
+                    }}
+                  />
                   {formErrors.ip && <span className="field-error-msg">{formErrors.ip}</span>}
                 </div>
                 <div className="form-field">
                   <label>ASSET TYPE</label>
-                  <select className="form-input" value={assetForm.type} onChange={(e) => setAssetForm({...assetForm, type: e.target.value})}>
+                  <select
+                    className="form-select"
+                    value={assetForm.type}
+                    onChange={(e) => setAssetForm({ ...assetForm, type: e.target.value })}
+                  >
                     <option value="SERVER">SERVER</option>
                     <option value="CLOUD_AWS">CLOUD_AWS</option>
                     <option value="CLOUD_AZURE">CLOUD_AZURE</option>
@@ -358,122 +420,187 @@ export default function RequestsPage() {
                 </div>
                 <div className="form-field">
                   <label>HEALTH STATUS</label>
-                  <select className="form-input" value={assetForm.status} onChange={(e) => setAssetForm({...assetForm, status: e.target.value})}>
+                  <select
+                    className="form-select"
+                    value={assetForm.status}
+                    onChange={(e) => setAssetForm({ ...assetForm, status: e.target.value })}
+                  >
                     <option value="HEALTHY">HEALTHY</option>
                     <option value="WARNING">WARNING</option>
                     <option value="CRITICAL">CRITICAL</option>
                   </select>
                 </div>
               </div>
-              <button type="submit" className="btn-primary" style={{ marginTop: '14px', padding: '8px 16px', fontSize: '0.85rem' }}>
-                <Send size={14} /> Submit Asset Creation Request
-              </button>
+              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn-primary">
+                  <Send size={14} /> Submit Asset Creation Request
+                </button>
+              </div>
             </form>
           )}
 
           {activeTab === 'GENERIC_ACTION' && (
             <form onSubmit={handleGenericSubmit} noValidate>
-              <div className="form-field" style={{ marginBottom: '10px' }}>
-                <input type="text" placeholder="Action Title (e.g., Provision VPN Tunnel)" className="form-input" value={title} onChange={(e) => { setTitle(e.target.value); if (formErrors.title) setFormErrors({...formErrors, title: null}); }} />
+              <div className="form-field" style={{ marginBottom: '12px' }}>
+                <label>Action Title</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Provision VPN Tunnel for Staging VPC"
+                  className={`form-input ${formErrors.title ? 'is-invalid' : ''}`}
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (formErrors.title) setFormErrors({ ...formErrors, title: null });
+                  }}
+                />
                 {formErrors.title && <span className="field-error-msg">{formErrors.title}</span>}
               </div>
               <div className="form-field">
-                <textarea placeholder="Describe details..." rows="3" className="form-input" value={messageText} onChange={(e) => { setMessageText(e.target.value); if (formErrors.messageText) setFormErrors({...formErrors, messageText: null}); }} />
+                <label>Description & Scope</label>
+                <textarea
+                  placeholder="Describe requirements and operational context..."
+                  rows="3"
+                  className={`form-input ${formErrors.messageText ? 'is-invalid' : ''}`}
+                  value={messageText}
+                  onChange={(e) => {
+                    setMessageText(e.target.value);
+                    if (formErrors.messageText) setFormErrors({ ...formErrors, messageText: null });
+                  }}
+                />
                 {formErrors.messageText && <span className="field-error-msg">{formErrors.messageText}</span>}
               </div>
-              <button type="submit" className="btn-primary" style={{ marginTop: '12px', padding: '8px 16px', fontSize: '0.85rem' }}>
-                <Send size={14} /> Submit Action Request
-              </button>
+              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn-primary">
+                  <Send size={14} /> Submit Action Request
+                </button>
+              </div>
             </form>
           )}
 
           {activeTab === 'PASSWORD_CHANGE' && (
             <form onSubmit={handlePasswordSubmit} noValidate>
               <div className="form-field">
-                <input type="password" placeholder="Requested New Password" className="form-input" value={newPassword} onChange={(e) => { setNewPassword(e.target.value); if (formErrors.newPassword) setFormErrors({...formErrors, newPassword: null}); }} />
+                <label>Requested New Password</label>
+                <input
+                  type="password"
+                  placeholder="Min 6 characters with letter and number"
+                  className={`form-input ${formErrors.newPassword ? 'is-invalid' : ''}`}
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (formErrors.newPassword) setFormErrors({ ...formErrors, newPassword: null });
+                  }}
+                />
                 {formErrors.newPassword && <span className="field-error-msg">{formErrors.newPassword}</span>}
               </div>
-              <button type="submit" className="btn-primary" style={{ marginTop: '12px', padding: '8px 16px', fontSize: '0.85rem' }}>
-                <Key size={14} /> Send Password Reset Request
-              </button>
+              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn-primary">
+                  <Key size={14} /> Send Password Reset Request
+                </button>
+              </div>
             </form>
           )}
 
           {activeTab === 'MESSAGE' && (
             <form onSubmit={handleMessageSubmit} noValidate>
-              <div className="form-field" style={{ marginBottom: '10px' }}>
-                <input type="text" placeholder="Subject" className="form-input" value={title} onChange={(e) => { setTitle(e.target.value); if (formErrors.title) setFormErrors({...formErrors, title: null}); }} />
+              <div className="form-field" style={{ marginBottom: '12px' }}>
+                <label>Subject</label>
+                <input
+                  type="text"
+                  placeholder="Message subject"
+                  className={`form-input ${formErrors.title ? 'is-invalid' : ''}`}
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (formErrors.title) setFormErrors({ ...formErrors, title: null });
+                  }}
+                />
                 {formErrors.title && <span className="field-error-msg">{formErrors.title}</span>}
               </div>
               <div className="form-field">
-                <textarea placeholder="Your message..." rows="3" className="form-input" value={messageText} onChange={(e) => { setMessageText(e.target.value); if (formErrors.messageText) setFormErrors({...formErrors, messageText: null}); }} />
+                <label>Message Body</label>
+                <textarea
+                  placeholder="Your message to system administrators..."
+                  rows="3"
+                  className={`form-input ${formErrors.messageText ? 'is-invalid' : ''}`}
+                  value={messageText}
+                  onChange={(e) => {
+                    setMessageText(e.target.value);
+                    if (formErrors.messageText) setFormErrors({ ...formErrors, messageText: null });
+                  }}
+                />
                 {formErrors.messageText && <span className="field-error-msg">{formErrors.messageText}</span>}
               </div>
-              <button type="submit" className="btn-primary" style={{ marginTop: '12px', padding: '8px 16px', fontSize: '0.85rem' }}>
-                <MessageSquare size={14} /> Send Direct Message
-              </button>
+              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn-primary">
+                  <MessageSquare size={14} /> Send Direct Message
+                </button>
+              </div>
             </form>
           )}
         </div>
       )}
 
       {/* PENDING REQUESTS PANEL */}
-      <h4 style={{ color: '#fff', fontSize: '1rem', fontWeight: 700, marginBottom: '12px' }}>
-        {isAdmin ? 'Pending Approval Queue' : 'My Active Requests'}
+      <h4 style={{ color: '#ffffff', fontSize: '1rem', fontWeight: 700, marginBottom: '14px' }}>
+        {isAdmin ? 'Pending Approval Queue' : 'My Active Requests'} ({pendingRequests.length})
       </h4>
 
       {pendingRequests.length === 0 ? (
-        <div className="form-panel" style={{ textAlign: 'center', color: 'var(--CSMS-text-muted)', padding: '24px', fontSize: '0.88rem' }}>
+        <div className="table-panel" style={{ textAlign: 'center', color: 'var(--CSMS-text-muted)', padding: '36px 20px', fontSize: '0.88rem', marginBottom: '24px' }}>
           No pending requests in queue at this time.
         </div>
       ) : (
         pendingRequests.map((req) => (
-          <div key={req.id} className="form-panel" style={{ marginBottom: '12px', padding: '14px', borderLeft: '3px solid #f59e0b' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>
+          <div key={req.id} className="card" style={{ marginBottom: '14px', padding: '16px 18px', borderLeft: '4px solid var(--CSMS-orange)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.98rem', fontWeight: 700, color: '#ffffff' }}>
                   {req.title || req.requestType}
                 </span>
                 <StatusBadge status={req.requestType} />
                 <StatusBadge status={req.status} />
               </div>
-              <button className="btn-glass btn-blue" style={{ padding: '4px 8px', fontSize: '0.78rem' }} onClick={() => handleViewRequest(req)}>
-                <Eye size={13} /> View Details
+              <button className="btn-action" style={{ padding: '4px 8px', fontSize: '0.78rem' }} onClick={() => handleViewRequest(req)}>
+                <Eye size={13} /> View Specification
               </button>
             </div>
 
-            <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', fontSize: '0.82rem' }}>
+            <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', fontSize: '0.82rem' }}>
               <div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)' }}>Requester</div>
-                <div style={{ color: 'var(--CSMS-text-bright)', marginTop: '2px' }}>{req.requester?.email || req.requester?.username}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Requester</div>
+                <div style={{ color: 'var(--CSMS-blue)', marginTop: '2px', fontWeight: 600 }}>{req.requester?.email || req.requester?.username}</div>
               </div>
               <div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)' }}>Submitted At</div>
-                <div style={{ color: 'var(--CSMS-text-bright)', marginTop: '2px' }}>{req.createdAt ? new Date(req.createdAt).toLocaleString() : '-'}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Submitted At</div>
+                <div style={{ color: '#ffffff', marginTop: '2px' }}>{req.createdAt ? new Date(req.createdAt).toLocaleString() : '—'}</div>
               </div>
               <div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)' }}>Request ID</div>
-                <div style={{ fontFamily: 'monospace', color: 'var(--CSMS-text-bright)', marginTop: '2px' }}>#{req.id}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Request ID</div>
+                <div style={{ fontFamily: 'monospace', color: 'var(--CSMS-text-muted)', marginTop: '2px' }}>#{req.id}</div>
               </div>
             </div>
 
-            <div style={{ marginTop: '10px' }}>
-              <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)', fontWeight: 600, marginBottom: '4px' }}>
-                DETAILS & REQUIREMENTS
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
+                Details & Parameters
               </div>
               {renderDetailsContent(req.details)}
             </div>
 
             {isAdmin && (
-              <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--CSMS-border)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--CSMS-border)', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
-                  type="text" placeholder="Optional admin comment..." className="form-input" style={{ flex: 1, padding: '6px 10px', fontSize: '0.82rem' }}
+                  type="text"
+                  placeholder="Optional admin comment..."
+                  className="form-input"
+                  style={{ flex: 1, minWidth: '200px', padding: '6px 12px', fontSize: '0.82rem' }}
                   onChange={(e) => setAdminComments({ ...adminComments, [req.id]: e.target.value })}
                 />
-                <button className="btn-glass btn-green" style={{ padding: '5px 12px', fontSize: '0.78rem' }} onClick={() => handleProcess(req.id, true)}>
+                <button className="btn-green" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => handleProcess(req.id, true)}>
                   <CheckCircle2 size={13} /> Approve
                 </button>
-                <button className="btn-glass btn-red" style={{ padding: '5px 12px', fontSize: '0.78rem' }} onClick={() => handleProcess(req.id, false)}>
+                <button className="btn-red" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => handleProcess(req.id, false)}>
                   <XCircle size={13} /> Reject
                 </button>
               </div>
@@ -484,10 +611,12 @@ export default function RequestsPage() {
 
       {/* REQUEST HISTORY TABLE */}
       {showHistory && (
-        <div className="table-panel" style={{ marginTop: '20px' }}>
-          <h4 style={{ padding: '14px 18px', color: 'var(--CSMS-text-bright)', fontSize: '0.95rem', margin: 0, fontWeight: 700 }}>
-            Processed Request History
-          </h4>
+        <div className="table-panel" style={{ marginTop: '24px' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--CSMS-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+              Processed Request History ({historyRequests.length})
+            </span>
+          </div>
           <table className="custom-table">
             <thead>
               <tr>
@@ -497,94 +626,74 @@ export default function RequestsPage() {
                 <th>Requester</th>
                 <th>Status</th>
                 <th>Admin Response</th>
-                <th>Actions</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {historyRequests.map((h) => (
-                <tr key={h.id}>
-                  <td style={{ fontWeight: 700 }}>#{h.id}</td>
-                  <td><StatusBadge status={h.requestType} /></td>
-                  <td>{h.title}</td>
-                  <td>{h.requester?.email || h.requester?.username}</td>
-                  <td><StatusBadge status={h.status} /></td>
-                  <td style={{ color: 'var(--CSMS-text-muted)' }}>{h.adminComment || '-'}</td>
-                  <td>
-                    <button className="btn-glass btn-blue" style={{ padding: '4px 8px', fontSize: '0.78rem' }} onClick={() => handleViewRequest(h)}>
-                      <Eye size={13} /> View
-                    </button>
+              {historyRequests.length > 0 ? (
+                historyRequests.map((h) => (
+                  <tr key={h.id}>
+                    <td className="mono" style={{ fontWeight: 700, color: '#ffffff' }}>#{h.id}</td>
+                    <td><StatusBadge status={h.requestType} /></td>
+                    <td style={{ fontWeight: 600, color: '#ffffff' }}>{h.title}</td>
+                    <td className="mono" style={{ color: 'var(--CSMS-blue)' }}>{h.requester?.email || h.requester?.username}</td>
+                    <td><StatusBadge status={h.status} /></td>
+                    <td style={{ color: 'var(--CSMS-text-muted)', fontSize: '0.82rem' }}>{h.adminComment || '—'}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button className="btn-action" style={{ padding: '4px 8px', fontSize: '0.78rem' }} onClick={() => handleViewRequest(h)}>
+                        <Eye size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', color: 'var(--CSMS-text-muted)', padding: '32px 20px' }}>
+                    No processed request history records found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
       )}
 
       {/* VIEW SINGLE REQUEST DETAILS MODAL */}
-      {isViewModalOpen && selectedRequest && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: 'rgba(0,0,0,0.85)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000,
-          }}
-        >
-          <div className="form-panel" style={{ width: '480px', marginBottom: 0, padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>Request Details</h3>
-              <X size={18} color="#a0aec0" style={{ cursor: 'pointer' }} onClick={() => setIsViewModalOpen(false)} />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.85rem' }}>
-              <div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block', fontWeight: 600 }}>TITLE / SUBJECT</span>
-                <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{selectedRequest.title || 'N/A'}</span>
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        title="Request Record Overview"
+        showCloseButton={true}
+      >
+        {selectedRequest && (
+          <>
+            <ModalSection>
+              <ModalField label="Title / Subject" value={selectedRequest.title || 'N/A'} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <ModalField label="Request Type" value={<StatusBadge status={selectedRequest.requestType} />} />
+                <ModalField label="Status" value={<StatusBadge status={selectedRequest.status} />} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block', fontWeight: 600, marginBottom: '2px' }}>REQUEST TYPE</span>
-                  <StatusBadge status={selectedRequest.requestType} />
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block', fontWeight: 600, marginBottom: '2px' }}>STATUS</span>
-                  <StatusBadge status={selectedRequest.status} />
-                </div>
-              </div>
+              <ModalField label="Requester" value={selectedRequest.requester?.email || selectedRequest.requester?.username} mono={true} />
               <div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block', fontWeight: 600 }}>REQUESTER</span>
-                <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{selectedRequest.requester?.email || selectedRequest.requester?.username}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block', fontWeight: 600, marginBottom: '4px' }}>DETAILS & PARAMETERS</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Details & Parameters</span>
                 {renderDetailsContent(selectedRequest.details)}
               </div>
               {selectedRequest.adminComment && (
-                <div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block', fontWeight: 600 }}>ADMIN COMMENT</span>
-                  <span style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>{selectedRequest.adminComment}</span>
-                </div>
+                <ModalField label="Admin Feedback / Comment" value={selectedRequest.adminComment} />
               )}
-            </div>
+            </ModalSection>
 
-            <button
-              className="btn-glass btn-blue"
-              style={{ marginTop: '20px', width: '100%', padding: '8px', fontSize: '0.85rem' }}
-              onClick={() => setIsViewModalOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+            <ModalFooter alignment="right">
+              <button
+                className="btn-blue"
+                onClick={() => setIsViewModalOpen(false)}
+              >
+                Done
+              </button>
+            </ModalFooter>
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

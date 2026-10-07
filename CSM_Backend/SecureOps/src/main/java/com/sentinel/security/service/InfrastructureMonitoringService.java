@@ -131,7 +131,7 @@ public class InfrastructureMonitoringService {
                     asset.setStatus(Asset.HealthStatus.OFFLINE);
                     asset.setUpdatedAt(OffsetDateTime.now());
                     assetRepository.save(asset);
-                    System.out.println("Asset marked offline due to inactivity: " + asset.getName());
+//                    System.out.println("Asset marked offline due to inactivity: " + asset.getName());
                 }
             } else if (asset.getLastSeen() == null) {
                 // If it never checked in, optionally mark offline or leave as is

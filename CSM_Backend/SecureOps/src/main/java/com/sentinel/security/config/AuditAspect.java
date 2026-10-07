@@ -79,6 +79,12 @@ public class AuditAspect {
     public Object logControllerActions(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().getName();
         String className = joinPoint.getTarget().getClass().getSimpleName();
+
+        // Exclude specific controllers from audit logging
+        if (className.equals("AgentTelemetryController")) {
+            return joinPoint.proceed();
+        }
+
         String key = className + "." + methodName;
 
         if (methodName.startsWith("get") || methodName.startsWith("fetch") || methodName.startsWith("check")) {

@@ -2,7 +2,9 @@ import React, { useState, useEffect, useContext } from "react";
 import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 import { CustomLoader } from "../components/CustomLoader";
-import { Users, UserPlus, Edit, Trash2, X, Check, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
+import { Users, UserPlus, Edit2, Trash2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
+import { Modal, ModalFooter } from "../components/Modal";
+import { ModalAlert } from '../components/ModalComponents';
 
 export const UsersPage = () => {
   const { user: currentUser } = useContext(AuthContext);
@@ -36,7 +38,7 @@ export const UsersPage = () => {
   const fetchUsers = async () => {
     try {
       const res = await API.get("/api/users");
-      setUsers(res.data);
+      setUsers(res.data || []);
     } catch (err) {
       console.error("Error fetching users:", err);
       setNotice({ type: "error", message: "Failed to load user accounts." });
@@ -51,11 +53,11 @@ export const UsersPage = () => {
 
   const validateCreate = () => {
     const errs = {};
-    if (!formData.username.trim()) errs.username = "Username required";
-    if (!formData.email.trim()) errs.email = "Email required";
+    if (!formData.username.trim()) errs.username = "Username is required";
+    if (!formData.email.trim()) errs.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(formData.email)) errs.email = "Invalid email format";
-    if (!formData.password) errs.password = "Password required";
-    else if (formData.password.length < 6) errs.password = "Min 6 characters required";
+    if (!formData.password) errs.password = "Password is required";
+    else if (formData.password.length < 6) errs.password = "Minimum 6 characters required";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -141,21 +143,60 @@ export const UsersPage = () => {
 
   if (currentUser?.role !== "ADMIN") {
     return (
-      <div className="page-container">
-        <div className="form-panel" style={{ textAlign: "center", padding: "40px", color: "#8c9ba5" }}>
-          <AlertTriangle size={48} color="#f5222d" style={{ marginBottom: "16px" }} />
-          <h3>Access Restricted</h3>
-          <p>User Identity & Authorization management is restricted to ADMIN roles only.</p>
+      <div className="page-container" style={{ textAlign: "center", padding: "80px 20px" }}>
+        <div
+          style={{
+            width: "64px",
+            height: "64px",
+            borderRadius: "50%",
+            backgroundColor: "var(--CSMS-red-dim)",
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 20px",
+          }}
+        >
+          <AlertCircle size={32} color="#ef4444" />
         </div>
+        <h2 style={{ color: "#ffffff", marginBottom: "8px" }}>Access Restricted</h2>
+        <p style={{ color: "var(--CSMS-text-muted)", maxWidth: "420px", margin: "0 auto" }}>
+          User Identity & Role Authorization management is restricted to Administrator roles only.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="page-container">
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
-        <Users size={24} color="#52c41a" />
-        <h2 style={{ color: "#fff", margin: 0 }}>Identity & Role Administration</h2>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div
+            style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(16, 185, 129, 0.12)",
+              border: "1px solid rgba(16, 185, 129, 0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Users size={20} color="#10b981" />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: "1.4rem" }}>Identity & Role Administration</h2>
+            <div style={{ fontSize: "0.8rem", color: "var(--CSMS-text-muted)", marginTop: "2px" }}>
+              Manage operator identities, credential provisioning, and RBAC privileges
+            </div>
+          </div>
+        </div>
+
+        <button className="btn-white" onClick={fetchUsers} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <RefreshCw size={14} /> Refresh Users
+        </button>
       </div>
 
       {/* FEEDBACK BANNER */}
@@ -169,29 +210,41 @@ export const UsersPage = () => {
             alignItems: "center",
             gap: "10px",
             borderLeft: `4px solid ${
-              notice.type === "success" ? "#52c41a" : "#f5222d"
+              notice.type === "success" ? "var(--CSMS-green)" : "var(--CSMS-red)"
             }`,
             backgroundColor:
               notice.type === "success"
-                ? "rgba(82, 196, 26, 0.1)"
-                : "rgba(245, 34, 45, 0.1)",
+                ? "var(--CSMS-green-dim)"
+                : "var(--CSMS-red-dim)",
           }}
         >
           {notice.type === "success" ? (
-            <CheckCircle2 size={18} color="#52c41a" />
+            <CheckCircle2 size={18} color="#10b981" />
           ) : (
-            <AlertCircle size={18} color="#f5222d" />
+            <AlertCircle size={18} color="#ef4444" />
           )}
-          <span style={{ color: "#fff", fontSize: "0.9rem" }}>
+          <span style={{ color: "#ffffff", fontSize: "0.88rem" }}>
             {notice.message}
           </span>
         </div>
       )}
 
       {/* CREATE USER PANEL */}
-      <div className="form-panel" style={{ marginBottom: "20px" }}>
-        <h4 style={{ color: "var(--CSMS-text-muted)", marginBottom: "15px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <UserPlus size={18} /> Provision New SOC User
+      <div className="form-panel" style={{ marginBottom: "24px" }}>
+        <h4
+          style={{
+            color: "var(--CSMS-text-muted)",
+            marginBottom: "16px",
+            fontSize: "0.85rem",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <UserPlus size={16} /> Provision New SOC Operator
         </h4>
         <form onSubmit={handleCreateUser}>
           <div className="form-grid">
@@ -201,7 +254,7 @@ export const UsersPage = () => {
                 className={`form-input ${formErrors.username ? "is-invalid" : ""}`}
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                placeholder="  j_doe"
+                placeholder="e.g. j_doe"
               />
               {formErrors.username && <span className="field-error-msg">{formErrors.username}</span>}
             </div>
@@ -213,7 +266,7 @@ export const UsersPage = () => {
                 className={`form-input ${formErrors.email ? "is-invalid" : ""}`}
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="jdoe@company.com"
+                placeholder="jdoe@security.org"
               />
               {formErrors.email && <span className="field-error-msg">{formErrors.email}</span>}
             </div>
@@ -231,9 +284,9 @@ export const UsersPage = () => {
             </div>
 
             <div className="form-field">
-              <label>Assigned Authorization Role</label>
+              <label>Authorization Role</label>
               <select
-                className="form-input"
+                className="form-select"
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               >
@@ -245,205 +298,225 @@ export const UsersPage = () => {
             </div>
           </div>
 
-          <button type="submit" className="btn-glass btn-green" style={{ marginTop: "16px" }}>
-            Provision User
-          </button>
+          <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end" }}>
+            <button type="submit" className="btn-primary">
+              <UserPlus size={15} /> Provision Account
+            </button>
+          </div>
         </form>
       </div>
 
       {/* USERS TABLE */}
       <div className="table-panel">
-        <h4 style={{ padding: "16px", color: "var(--CSMS-text-muted)", margin: 0 }}>
-          Provisioned Accounts ({users.length})
-        </h4>
+        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--CSMS-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>
+            Provisioned Operators ({users.length})
+          </span>
+        </div>
         <table className="custom-table">
           <thead>
             <tr>
               <th>User ID</th>
               <th>Username</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Created At</th>
-              <th>Actions</th>
+              <th>Email Address</th>
+              <th>Assigned Role</th>
+              <th>Created Date</th>
+              <th style={{ textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
-              <tr key={u.userId}>
-                <td style={{ fontFamily: "monospace" }}>#{u.userId}</td>
-                <td style={{ fontWeight: 600, color: "#fff" }}>{u.username}</td>
-                <td>{u.email}</td>
-                <td>
-                  <span
-                    style={{
-                      padding: "2px 8px",
-                      borderRadius: "4px",
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                      background:
-                        u.role === "ADMIN"
-                          ? "rgba(245, 34, 45, 0.2)"
-                          : u.role === "SECURITY_ANALYST"
-                          ? "rgba(114, 46, 209, 0.2)"
-                          : u.role === "DEVOPS_ENGINEER"
-                          ? "rgba(24, 144, 255, 0.2)"
-                          : "rgba(255, 255, 255, 0.1)",
-                      color:
-                        u.role === "ADMIN"
-                          ? "#ff7875"
-                          : u.role === "SECURITY_ANALYST"
-                          ? "#b37feb"
-                          : u.role === "DEVOPS_ENGINEER"
-                          ? "#69c0ff"
-                          : "#d9d9d9",
-                      border: "1px solid currentColor",
-                    }}
-                  >
-                    {u.role}
-                  </span>
-                </td>
-                <td style={{ fontSize: "0.82rem", color: "#8c9ba5" }}>
-                  {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "N/A"}
-                </td>
-                <td>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <button
-                      className="btn-glass btn-orange"
-                      style={{ padding: "4px 10px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "4px" }}
-                      onClick={() => handleOpenEdit(u)}
+            {users.length > 0 ? (
+              users.map((u) => (
+                <tr key={u.userId}>
+                  <td className="mono" style={{ color: "var(--CSMS-blue)" }}>#{u.userId}</td>
+                  <td style={{ fontWeight: 700, color: "#ffffff" }}>{u.username}</td>
+                  <td style={{ color: "var(--CSMS-text-main)" }}>{u.email}</td>
+                  <td>
+                    <span
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: "4px",
+                        fontSize: "0.75rem",
+                        fontWeight: 700,
+                        background:
+                          u.role === "ADMIN"
+                            ? "rgba(239, 68, 68, 0.15)"
+                            : u.role === "SECURITY_ANALYST"
+                            ? "rgba(139, 92, 246, 0.15)"
+                            : u.role === "DEVOPS_ENGINEER"
+                            ? "rgba(59, 130, 246, 0.15)"
+                            : "rgba(255, 255, 255, 0.08)",
+                        color:
+                          u.role === "ADMIN"
+                            ? "#ef4444"
+                            : u.role === "SECURITY_ANALYST"
+                            ? "#8b5cf6"
+                            : u.role === "DEVOPS_ENGINEER"
+                            ? "#3b82f6"
+                            : "#94a3b8",
+                        border: "1px solid currentColor",
+                      }}
                     >
-                      <Edit size={14} /> Edit
-                    </button>
-
-                    {/* Prevent deleting own logged in admin account */}
-                    {currentUser?.username !== u.username && (
+                      {u.role}
+                    </span>
+                  </td>
+                  <td style={{ fontSize: "0.8rem", color: "var(--CSMS-text-muted)" }}>
+                    {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "N/A"}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <div style={{ display: "inline-flex", gap: "6px" }}>
                       <button
-                        className="btn-glass btn-red"
-                        style={{ padding: "4px 10px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "4px" }}
-                        onClick={() => handlePromptDelete(u)}
+                        className="btn-orange"
+                        style={{ padding: "4px 8px", fontSize: "0.78rem" }}
+                        onClick={() => handleOpenEdit(u)}
+                        title="Modify user"
                       >
-                        <Trash2 size={14} /> Delete
+                        <Edit2 size={13} />
                       </button>
-                    )}
-                  </div>
+
+                      {/* Prevent deleting own logged in admin account */}
+                      {currentUser?.username !== u.username && (
+                        <button
+                          className="btn-red"
+                          style={{ padding: "4px 8px", fontSize: "0.78rem" }}
+                          onClick={() => handlePromptDelete(u)}
+                          title="Revoke access"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" style={{ textAlign: "center", color: "var(--CSMS-text-muted)", padding: "32px 20px" }}>
+                  No operator accounts registered.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
       {/* EDIT USER MODAL */}
-      {isEditModalOpen && selectedUser && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div className="form-panel" style={{ width: "480px", marginBottom: 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h3 style={{ margin: 0, color: "#fff" }}>Modify User Authorization</h3>
-              <X size={20} color="#a0aec0" style={{ cursor: "pointer" }} onClick={() => setIsEditModalOpen(false)} />
-            </div>
-
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Modify User Authorization"
+        showCloseButton={true}
+      >
+        {selectedUser && (
+          <form onSubmit={handleUpdateUser}>
             {editError && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 12px",
-                  marginBottom: "16px",
-                  borderRadius: "6px",
-                  backgroundColor: "rgba(245, 34, 45, 0.15)",
-                  border: "1px solid rgba(245, 34, 45, 0.3)",
-                  color: "#f5222d",
-                  fontSize: "0.85rem",
-                }}
-              >
-                <AlertCircle size={16} />
-                <span>{editError}</span>
-              </div>
+              <ModalAlert type="error" icon={<AlertCircle size={16} />}>
+                {editError}
+              </ModalAlert>
             )}
 
-            <form onSubmit={handleUpdateUser}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div className="form-field">
-                  <label>Username (Read-Only)</label>
-                  <input className="form-input" value={selectedUser.username} disabled style={{ opacity: 0.6 }} />
-                </div>
-
-                <div className="form-field">
-                  <label>Email Address</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={editFormData.email}
-                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Reset Password (Leave blank to keep existing)</label>
-                  <input
-                    type="password"
-                    className="form-input"
-                    placeholder="New password..."
-                    value={editFormData.password}
-                    onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Role Privilege</label>
-                  <select
-                    className="form-input"
-                    value={editFormData.role}
-                    onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
-                  >
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="SECURITY_ANALYST">SECURITY_ANALYST</option>
-                    <option value="DEVOPS_ENGINEER">DEVOPS_ENGINEER</option>
-                    <option value="EMPLOYEE">EMPLOYEE</option>
-                  </select>
-                </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div className="form-field">
+                <label>Username (System Immutable)</label>
+                <input className="form-input" value={selectedUser.username} disabled style={{ opacity: 0.6 }} />
               </div>
 
-              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-                <button type="submit" className="btn-glass btn-green" style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "6px" }}>
-                  <Check size={16} /> Save Changes
-                </button>
-                <button type="button" className="btn-glass btn-blue" style={{ background: "transparent"}} onClick={() => setIsEditModalOpen(false)}>
-                  Cancel
-                </button>
+              <div className="form-field">
+                <label>Email Address</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                />
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              <div className="form-field">
+                <label>Reset Password (Leave blank to keep existing)</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="New password..."
+                  value={editFormData.password}
+                  onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                />
+              </div>
+
+              <div className="form-field">
+                <label>Role Privilege</label>
+                <select
+                  className="form-select"
+                  value={editFormData.role}
+                  onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                >
+                  <option value="ADMIN">ADMIN</option>
+                  <option value="SECURITY_ANALYST">SECURITY_ANALYST</option>
+                  <option value="DEVOPS_ENGINEER">DEVOPS_ENGINEER</option>
+                  <option value="EMPLOYEE">EMPLOYEE</option>
+                </select>
+              </div>
+            </div>
+
+            <ModalFooter>
+              <button
+                type="button"
+                className="btn-white"
+                onClick={() => setIsEditModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+              >
+                Save Changes
+              </button>
+            </ModalFooter>
+          </form>
+        )}
+      </Modal>
 
       {/* DELETE USER CONFIRMATION MODAL */}
-      {isDeleteModalOpen && selectedUser && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div className="form-panel" style={{ width: "440px", textAlign: "center", padding: "30px", marginBottom: 0 }}>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
-              <div style={{ background: "rgba(245, 34, 45, 0.15)", padding: "14px", borderRadius: "50%", border: "1px solid rgba(245, 34, 45, 0.3)" }}>
-                <AlertTriangle size={32} color="#f5222d" />
-              </div>
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Revoke Account Access"
+        showCloseButton={true}
+        centered={true}
+      >
+        {selectedUser && (
+          <div style={{ textAlign: "center", padding: "10px 0" }}>
+            <div
+              style={{
+                background: "var(--CSMS-red-dim)",
+                padding: "16px",
+                borderRadius: "50%",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                marginBottom: "16px",
+                display: "inline-flex",
+              }}
+            >
+              <Trash2 size={28} color="#ef4444" />
             </div>
 
-            <h3 style={{ color: "#fff", marginBottom: "10px" }}>Revoke Account Access?</h3>
-            <p style={{ color: "#a0aec0", fontSize: "0.9rem", marginBottom: "20px" }}>
-              Are you sure you want to permanently delete user <strong style={{ color: "#fff" }}>"{selectedUser.username}"</strong> ({selectedUser.email})?
+            <p style={{ fontSize: "0.95rem", color: "var(--CSMS-text-main)", marginBottom: "8px" }}>
+              Are you sure you want to permanently revoke operator access for <strong>{selectedUser.username}</strong> ({selectedUser.email})?
+            </p>
+            <p style={{ fontSize: "0.82rem", color: "var(--CSMS-text-muted)" }}>
+              This operator will be immediately logged out and unable to access the CSMS platform.
             </p>
 
-            <div style={{ display: "flex", gap: "12px" }}>
-              <button className="btn-glass btn-red" style={{ flex: 1 }} onClick={handleConfirmDelete}>
-                Delete User
+            <ModalFooter alignment="stretch">
+              <button className="btn-white" onClick={() => setIsDeleteModalOpen(false)}>
+                Cancel
               </button>
-              <button type="button" className="btn-glass btn-blue" style={{ background: "transparent"}} onClick={() => setIsDeleteModalOpen(false)}>
-                  Cancel
-                </button>
-            </div>
+              <button className="btn-red" onClick={handleConfirmDelete}>
+                Revoke Account
+              </button>
+            </ModalFooter>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 };

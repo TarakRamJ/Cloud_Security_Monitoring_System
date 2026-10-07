@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/telemetry/**").permitAll()
                         .requestMatchers("/api/dashboard/**").permitAll()
                         .requestMatchers("/api/metrics/**").permitAll()
+                        .requestMatchers("/api/v1/metrics/**").permitAll()
                         .requestMatchers("/api/v1/vulnerabilities/**").permitAll()
                         .requestMatchers("/api/users/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
 

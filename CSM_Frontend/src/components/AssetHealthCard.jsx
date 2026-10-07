@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { Box, Card, CardContent, Typography } from "@mui/material";
 import {
   PieChart as RechartsPieChart,
@@ -26,7 +26,7 @@ const renderActiveShape = (props) => {
   );
 };
 
-export const AssetHealthCard = ({ assetHealthData, totalAssetsCount }) => {
+export const AssetHealthCard = memo(({ assetHealthData, totalAssetsCount }) => {
   const [activeIndex, setActiveIndex] = useState(null);
 
   const onPieEnter = (_, index) => {
@@ -82,6 +82,7 @@ export const AssetHealthCard = ({ assetHealthData, totalAssetsCount }) => {
                 activeShape={renderActiveShape}
                 onMouseEnter={onPieEnter}
                 onMouseLeave={onPieLeave}
+                isAnimationActive={false}
               >
                 {assetHealthData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} style={{ outline: "none" }} />
@@ -140,4 +141,4 @@ export const AssetHealthCard = ({ assetHealthData, totalAssetsCount }) => {
       </CardContent>
     </Card>
   );
-};
+});

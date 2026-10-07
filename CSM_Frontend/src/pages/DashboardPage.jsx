@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useMemo, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
@@ -24,7 +24,6 @@ import {
   Alert,
   ThemeProvider,
   createTheme,
-  CssBaseline,
 } from "@mui/material";
 import {
   Refresh as RefreshIcon,
@@ -44,21 +43,15 @@ import {
   Add as AddIcon,
   AssignmentTurnedIn as ReportIcon,
 } from "@mui/icons-material";
-import {
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-} from "recharts";
 import { AssetHealthCard } from "../components/AssetHealthCard";
+import { TechnicalMetricsSection } from "../components/TechnicalMetricsSection";
 
 const socTheme = createTheme({
   palette: {
     mode: "dark",
     background: {
-      default: "#0A0C10",
-      paper: "#171B22",
+      default: "#050608",
+      paper: "#0D1117",
     },
     primary: { main: "#10B981" },
     secondary: { main: "#3B82F6" },
@@ -66,18 +59,18 @@ const socTheme = createTheme({
     warning: { main: "#F59E0B" },
     info: { main: "#3B82F6" },
     success: { main: "#10B981" },
-    divider: "#242933",
-    text: { primary: "#F5F7FA", secondary: "#8B93A3" },
+    divider: "#1F2937",
+    text: { primary: "#F9FAFB", secondary: "#9CA3AF" },
   },
-  shape: { borderRadius: 10 },
+  shape: { borderRadius: 12 },
   typography: {
-    fontFamily: '"Inter", "Segoe UI", sans-serif',
-    h6: { fontWeight: 700, fontSize: "0.95rem", letterSpacing: "0.01em" },
+    fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
+    h6: { fontWeight: 700, fontSize: "1rem", letterSpacing: "0.02em" },
     subtitle2: {
-      fontSize: "0.68rem",
+      fontSize: "0.7rem",
       textTransform: "uppercase",
-      letterSpacing: "0.05em",
-      fontWeight: 700,
+      letterSpacing: "0.1em",
+      fontWeight: 800,
     },
   },
   components: {
@@ -85,10 +78,10 @@ const socTheme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: "none",
-          backgroundColor: "#171B22",
-          border: "1px solid #242933",
-          borderRadius: 10,
-          boxShadow: "0 1px 2px rgba(0,0,0,0.4)",
+          backgroundColor: "#0D1117",
+          border: "1px solid #1F2937",
+          borderRadius: 12,
+          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3)",
         },
       },
     },
@@ -113,142 +106,27 @@ const SEVERITY_COLORS = {
 };
 
 const KPI_DEFS = [
-  {
-    key: "totalAssets",
-    label: "Total Assets",
-    icon: AssetIcon,
-    color: "#3B82F6",
-  },
-  {
-    key: "healthyAssets",
-    label: "Healthy Assets",
-    icon: HealthyIcon,
-    color: "#10B981",
-  },
-  {
-    key: "criticalAssets",
-    label: "Critical Assets",
-    icon: CriticalIcon,
-    color: "#EF4444",
-  },
-  {
-    key: "activeAlerts",
-    label: "Active Alerts",
-    icon: BellIcon,
-    color: "#F59E0B",
-  },
-  {
-    key: "activeIncidents",
-    label: "Incidents",
-    icon: WarningIcon,
-    color: "#EF4444",
-  },
-  {
-    key: "criticalVulnerabilities",
-    label: "Critical CVEs",
-    icon: BugIcon,
-    color: "#EF4444",
-  },
-  {
-    key: "overallRiskScore",
-    label: "Risk Score",
-    icon: RiskIcon,
-    color: "#F59E0B",
-    suffix: "/100",
-  },
-  {
-    key: "compliancePercentage",
-    label: "Compliance",
-    icon: ComplianceIcon,
-    color: "#10B981",
-    suffix: "%",
-  },
-  {
-    key: "auditLogsToday",
-    label: "Audit Logs",
-    icon: AuditIcon,
-    color: "#8B93A3",
-  },
+  { key: "totalAssets", label: "Total Assets", icon: AssetIcon, color: "#3B82F6" },
+  { key: "healthyAssets", label: "Healthy Assets", icon: HealthyIcon, color: "#10B981" },
+  { key: "criticalAssets", label: "Critical Assets", icon: CriticalIcon, color: "#EF4444" },
+  { key: "activeAlerts", label: "Active Alerts", icon: BellIcon, color: "#F59E0B" },
+  { key: "activeIncidents", label: "Incidents", icon: WarningIcon, color: "#EF4444" },
+  { key: "criticalVulnerabilities", label: "Critical CVEs", icon: BugIcon, color: "#EF4444" },
+  { key: "overallRiskScore", label: "Risk Score", icon: RiskIcon, color: "#F59E0B", suffix: "/100" },
+  { key: "compliancePercentage", label: "Compliance", icon: ComplianceIcon, color: "#10B981", suffix: "%" },
+  { key: "auditLogsToday", label: "Audit Logs", icon: AuditIcon, color: "#8B93A3" },
 ];
 
 const QUICK_ACTIONS = [
   { label: "Add Asset", act: "ADD_ASSET", icon: AddIcon, color: "#3B82F6" },
-  {
-    label: "Check Incidents",
-    act: "CREATE_INCIDENT",
-    icon: WarningIcon,
-    color: "#F59E0B",
-  },
+  { label: "Check Incidents", act: "CREATE_INCIDENT", icon: WarningIcon, color: "#F59E0B" },
   { label: "Run Scan", act: "RUN_TRIVY", icon: BugIcon, color: "#EF4444" },
-  {
-    label: "Generate Report",
-    act: "GENERATE_REPORT",
-    icon: ReportIcon,
-    color: "#8B93A3",
-  },
-  {
-    label: "Check Compliance",
-    act: "CHECK_COMPLIANCE",
-    icon: ComplianceIcon,
-    color: "#10B981",
-    adminOnly: true,
-  },
-  {
-    label: "View Alerts",
-    act: "VIEW_ALERTS",
-    icon: BellIcon,
-    color: "#F59E0B",
-  },
-  {
-    label: "View Vulnerabilities",
-    act: "VIEW_VULNERABILITIES",
-    icon: ShieldIcon,
-    color: "#EF4444",
-  },
-  {
-    label: "Audit Trail",
-    act: "VIEW_AUDIT_TRAIL",
-    icon: AuditIcon,
-    color: "#3B82F6",
-    adminOnly: true,
-  },
+  { label: "Generate Report", act: "GENERATE_REPORT", icon: ReportIcon, color: "#8B93A3" },
+  { label: "Check Compliance", act: "CHECK_COMPLIANCE", icon: ComplianceIcon, color: "#10B981", adminOnly: true },
+  { label: "View Alerts", act: "VIEW_ALERTS", icon: BellIcon, color: "#F59E0B" },
+  { label: "View Vulnerabilities", act: "VIEW_VULNERABILITIES", icon: ShieldIcon, color: "#EF4444" },
+  { label: "Audit Trail", act: "VIEW_AUDIT_TRAIL", icon: AuditIcon, color: "#3B82F6", adminOnly: true },
 ];
-
-// Custom Tooltip for Asset Health Pie Chart
-const PieTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    const data = payload[0];
-    return (
-      <Box
-        sx={{
-          backgroundColor: "#18181b",
-          border: "1px solid rgba(255, 255, 255, 0.12)",
-          borderRadius: "8px",
-          p: 1,
-          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.6)",
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Box
-            sx={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              backgroundColor: data.payload.color,
-            }}
-          />
-          <Typography
-            variant="caption"
-            sx={{ color: "#ffffff", fontWeight: 600 }}
-          >
-            {data.name}: {data.value}
-          </Typography>
-        </Box>
-      </Box>
-    );
-  }
-  return null;
-};
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
@@ -266,15 +144,21 @@ export const DashboardPage = () => {
     severity: "info",
   });
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
+  const [technicalMetrics, setTechnicalMetrics] = useState(null);
+  const [metricsTimeRange, setMetricsTimeRange] = useState("24h");
 
-  const fetchSocData = async (isBackground = false) => {
+  const fetchSocData = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true);
     try {
-      const [socRes, chartRes] = await Promise.all([
+      const [socRes, chartRes, metricsRes] = await Promise.all([
         API.get("/api/dashboard/soc-overview"),
         API.get("/api/dashboard/charts"),
+        API.get("/api/v1/metrics/technical-performance", {
+          params: { timeRange: metricsTimeRange },
+        }),
       ]);
       setData(socRes.data);
+      setTechnicalMetrics(metricsRes.data);
 
       const formattedCharts = (chartRes.data || []).map((item) => ({
         ...item,
@@ -290,9 +174,36 @@ export const DashboardPage = () => {
     } catch (err) {
       console.error("SOC Fetch Error:", err);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
-  };
+  }, [metricsTimeRange]);
+
+  const fetchAuditLogs = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoadingLogs(true);
+    try {
+      const res = await API.get("/api/dashboard/auditLogs-summary");
+      setAuditLogs(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch audit logs summary:", err);
+    } finally {
+      if (!isBackground) setLoadingLogs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSocData(false);
+    fetchAuditLogs(false);
+
+    const interval = setInterval(() => {
+      // Avoid polling when tab is inactive to save browser cycles
+      if (!document.hidden) {
+        fetchSocData(true);
+        fetchAuditLogs(true);
+      }
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [fetchSocData, fetchAuditLogs]);
 
   const handleQuickAction = async (actionType) => {
     setActionLoading(true);
@@ -311,7 +222,7 @@ export const DashboardPage = () => {
             message: "Vulnerability scan started.",
             severity: "success",
           });
-          fetchSocData();
+          fetchSocData(false);
           break;
         case "GENERATE_REPORT":
           navigate("/reports");
@@ -357,58 +268,38 @@ export const DashboardPage = () => {
     }
   };
 
-  const visibleQuickActions = QUICK_ACTIONS.filter(
-    (item) => !item.adminOnly || isAdmin,
+  const visibleQuickActions = useMemo(
+    () => QUICK_ACTIONS.filter((item) => !item.adminOnly || isAdmin),
+    [isAdmin]
   );
 
-  const resourceUsage = [
-    {
-      label: "CPU Usage",
-      val: Math.round(data?.resourceSummary?.cpuUsage ?? 23),
-      icon: <CpuIcon fontSize="small" />,
-    },
-    {
-      label: "Memory Usage",
-      val: Math.round(data?.resourceSummary?.memoryUsage ?? 47),
-      icon: <AssetIcon fontSize="small" />,
-    },
-    {
-      label: "Disk Usage",
-      val: Math.round(data?.resourceSummary?.diskUsage ?? 67),
-      icon: <DiskIcon fontSize="small" />,
-    },
-    {
-      label: "Network Usage",
-      val: Math.round(data?.resourceSummary?.networkUsage ?? 12),
-      icon: <NetworkIcon fontSize="small" />,
-    },
-  ];
+  const resourceUsage = useMemo(
+    () => [
+      {
+        label: "CPU Usage",
+        val: Math.round(data?.resourceSummary?.cpuUsage ?? 23),
+        icon: <CpuIcon fontSize="small" />,
+      },
+      {
+        label: "Memory Usage",
+        val: Math.round(data?.resourceSummary?.memoryUsage ?? 47),
+        icon: <AssetIcon fontSize="small" />,
+      },
+      {
+        label: "Disk Usage",
+        val: Math.round(data?.resourceSummary?.diskUsage ?? 67),
+        icon: <DiskIcon fontSize="small" />,
+      },
+      {
+        label: "Network Usage",
+        val: Math.round(data?.resourceSummary?.networkUsage ?? 12),
+        icon: <NetworkIcon fontSize="small" />,
+      },
+    ],
+    [data?.resourceSummary]
+  );
 
   const securityScore = data?.securityScore ?? 85;
-
-  const fetchAuditLogs = async (isBackground = false) => {
-    if (!isBackground) setLoadingLogs(true);
-    try {
-      const res = await API.get("/api/dashboard/auditLogs-summary");
-      setAuditLogs(res.data);
-    } catch (err) {
-      console.error("Failed to fetch audit logs summary:", err);
-    } finally {
-      if (!isBackground) setLoadingLogs(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSocData(false);
-    fetchAuditLogs(false);
-
-    const interval = setInterval(() => {
-      fetchSocData(true);
-      fetchAuditLogs(true);
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const formatLogTime = (isoString) => {
     if (!isoString) return "--:--";
@@ -433,15 +324,27 @@ export const DashboardPage = () => {
     totalAssetsCount - healthyCount - criticalCount,
   );
 
-  const assetHealthData = [
-    { name: "HEALTHY", value: healthyCount, color: "#10B981" },
-    { name: "WARNING", value: warningCount, color: "#F59E0B" },
-    { name: "CRITICAL", value: criticalCount, color: "#EF4444" },
-  ];
+  const assetHealthData = useMemo(
+    () => [
+      { name: "HEALTHY", value: healthyCount, color: "#10B981" },
+      { name: "WARNING", value: warningCount, color: "#F59E0B" },
+      { name: "CRITICAL", value: criticalCount, color: "#EF4444" },
+    ],
+    [healthyCount, warningCount, criticalCount]
+  );
+
+  const lastScanDisplay = useMemo(() => {
+    if (!data?.lastScanTime) return "N/A";
+    const diff = Math.floor((Date.now() - new Date(data.lastScanTime).getTime()) / 60000);
+    if (diff < 1) return "Just now";
+    if (diff < 60) return `${diff}m ago`;
+    const hours = Math.floor(diff / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }, [data?.lastScanTime]);
 
   return (
     <ThemeProvider theme={socTheme}>
-      <CssBaseline />
       <Box
         sx={{
           p: { xs: 2, md: 3 },
@@ -489,7 +392,10 @@ export const DashboardPage = () => {
               size="small"
               variant="outlined"
               startIcon={<RefreshIcon fontSize="small" />}
-              onClick={fetchSocData}
+              onClick={() => {
+                fetchSocData(false);
+                fetchAuditLogs(false);
+              }}
               sx={{
                 borderColor: "divider",
                 color: "text.secondary",
@@ -609,79 +515,73 @@ export const DashboardPage = () => {
           })}
 
           {/* 10th Card: Last Scan */}
-          {[{ label: "LAST SCAN", val: "2h ago", icon: BugIcon }].map((s) => {
-            const Icon = s.icon;
-            return (
-              <Box
-                key={s.label}
+          <Box
+            sx={{
+              backgroundColor: "background.paper",
+              border: "1px dashed",
+              borderColor: "divider",
+              borderRadius: 2.5,
+              p: 1.5,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              minHeight: 80,
+              transition: "transform 0.15s ease, border-color 0.15s ease",
+              "&:hover": {
+                borderColor: "rgba(255,255,255,0.18)",
+                transform: "translateY(-2px)",
+              },
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 1,
+                gap: 1,
+              }}
+            >
+              <Typography
+                variant="caption"
                 sx={{
-                  backgroundColor: "background.paper",
-                  border: "1px dashed",
-                  borderColor: "divider",
-                  borderRadius: 2.5,
-                  p: 1.5,
+                  color: "text.secondary",
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  fontSize: "0.7rem",
+                }}
+                noWrap
+              >
+                LAST SCAN
+              </Typography>
+              <Box
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
                   display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  minHeight: 80,
-                  transition: "transform 0.15s ease, border-color 0.15s ease",
-                  "&:hover": {
-                    borderColor: "rgba(255,255,255,0.18)",
-                    transform: "translateY(-2px)",
-                  },
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(255,255,255,0.08)",
+                  color: "text.secondary",
+                  flexShrink: 0,
                 }}
               >
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 1,
-                    gap: 1,
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                      fontWeight: 700,
-                      letterSpacing: 0.5,
-                      textTransform: "uppercase",
-                      fontSize: "0.7rem",
-                    }}
-                    noWrap
-                  >
-                    {s.label}
-                  </Typography>
-                  <Box
-                    sx={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: "rgba(255,255,255,0.08)",
-                      color: "text.secondary",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Icon sx={{ fontSize: 16 }} />
-                  </Box>
-                </Box>
-                <Typography
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: "1.35rem",
-                    color: "#fff",
-                    lineHeight: 1,
-                  }}
-                >
-                  {s.val}
-                </Typography>
+                <BugIcon sx={{ fontSize: 16 }} />
               </Box>
-            );
-          })}
+            </Box>
+            <Typography
+              sx={{
+                fontWeight: 800,
+                fontSize: "1.35rem",
+                color: "#fff",
+                lineHeight: 1,
+              }}
+            >
+              {lastScanDisplay}
+            </Typography>
+          </Box>
         </Box>
 
         {/* INFRASTRUCTURE OVERVIEW */}
@@ -885,7 +785,7 @@ export const DashboardPage = () => {
             </CardContent>
           </Card>
 
-          {/*Asset Health Donut Chart */}
+          {/* Asset Health Donut Chart */}
           <AssetHealthCard
             assetHealthData={assetHealthData}
             totalAssetsCount={totalAssetsCount}
@@ -894,6 +794,14 @@ export const DashboardPage = () => {
           {/* Performance Telemetry Trend Chart */}
           <DashboardTelemetrySection charts={charts} loading={loading} />
         </Box>
+
+        {/* FORSBERG (2023) TECHNICAL METRICS (LIVE DATA) */}
+        <TechnicalMetricsSection
+          metrics={technicalMetrics}
+          loading={loading}
+          timeRange={metricsTimeRange}
+          onTimeRangeChange={(range) => setMetricsTimeRange(range)}
+        />
 
         {/* LINE 1: OPERATIONS & COMPLIANCE ROW */}
         <Box

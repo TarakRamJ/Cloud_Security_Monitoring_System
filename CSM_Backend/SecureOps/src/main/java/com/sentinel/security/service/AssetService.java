@@ -24,7 +24,7 @@ public class AssetService {
         if (asset.getAssetId() == null) {
             asset.setAssetId(UUID.randomUUID());
         }
-        asset.setStatus(Asset.HealthStatus.HEALTHY);
+        asset.setStatus(Asset.HealthStatus.OFFLINE);
         return assetRepository.save(asset);
     }
 

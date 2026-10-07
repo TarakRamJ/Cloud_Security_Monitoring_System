@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Repository
 public interface IncidentRepository extends JpaRepository<Incident, UUID> {
@@ -17,4 +18,6 @@ public interface IncidentRepository extends JpaRepository<Incident, UUID> {
     long countByStatusNot(Incident.IncidentStatus status);
 
     List<Incident> findBySeverityAndStatusNot(Incident.IncidentSeverity severity,Incident.IncidentStatus status);
+
+    List<Incident> findAllByUpdatedAtAfter(LocalDateTime updatedAt);
 }

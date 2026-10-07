@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jna.platform.win32.Advapi32Util;
 import com.sun.jna.platform.win32.WinReg;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -33,6 +35,8 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 @EnableScheduling
 public class AgentTelemetryService implements SchedulingConfigurer {
+
+    private static final Logger logger = LoggerFactory.getLogger(AgentTelemetryService.class);
 
     private final RestTemplate restTemplate;
     private final SystemInfo systemInfo = new SystemInfo();
@@ -66,9 +70,9 @@ public class AgentTelemetryService implements SchedulingConfigurer {
 
             if (configFile.exists()) {
                 config = mapper.readValue(configFile, AgentConfig.class);
-                System.out.println("Loaded config for Asset ID: " + config.getAssetId());
+                logger.info("Loaded config for Asset ID: {}", config.getAssetId());
             } else {
-                System.err.println("CRITICAL ERROR: config.json not found in " + appDir);
+                logger.error("CRITICAL ERROR: config.json not found in {}", appDir);
                 try { Thread.sleep(5000); } catch (Exception ignored) {}
                 System.exit(1);
             }
@@ -85,14 +89,14 @@ public class AgentTelemetryService implements SchedulingConfigurer {
                     scanUsbDevices(false);
                     scanInstalledApplications(false);
                     this.isInitialScanDone = true;
-                    System.out.println("Initial hardware & software baseline scan complete.");
+                    logger.info("Initial hardware & software baseline scan complete");
                 } catch (Exception e) {
-                    System.err.println("Warning: Baseline scan failed: " + e.getMessage());
+                    logger.warn("Baseline scan failed: {}", e.getMessage());
                 }
             }, "Baseline-Scanner").start();
 
         } catch (Exception e) {
-            System.err.println("ERROR: Failed to initialize AgentTelemetryService: " + e.getMessage());
+            logger.error("Failed to initialize AgentTelemetryService: {}", e.getMessage());
             try { Thread.sleep(5000); } catch (Exception ignored) {}
             System.exit(1);
         }
@@ -157,10 +161,14 @@ public class AgentTelemetryService implements SchedulingConfigurer {
 
             // Send to Main/SOC Application
             restTemplate.postForEntity(config.getServerUrl(), payload, Void.class);
-            System.out.println(String.format("Telemetry -> CPU: %.1f%% | MEM: %.1f%% | DISK: %.1f%% | NET: %.2f MB/s",
-                    cpuLoad, memoryLoad, diskLoad, networkRateMBps));
+
+            // Use DEBUG level so it can be disabled in production
+            if (logger.isDebugEnabled()) {
+                logger.debug("Telemetry -> CPU: {:.1f}% | MEM: {:.1f}% | DISK: {:.1f}% | NET: {:.2f} MB/s",
+                        cpuLoad, memoryLoad, diskLoad, networkRateMBps);
+            }
         } catch (Exception e) {
-            System.err.println("Failed to connect or collect telemetry: " + e.getMessage());
+            logger.error("Failed to collect or send telemetry: {}", e.getMessage());
         }
     }
 
@@ -170,7 +178,7 @@ public class AgentTelemetryService implements SchedulingConfigurer {
             scanUsbDevices(true);
             scanInstalledApplications(true);
         } catch (Exception e) {
-            System.err.println("Error during alert checks: " + e.getMessage());
+            logger.error("Error during alert checks: {}", e.getMessage());
         }
     }
 
@@ -194,7 +202,7 @@ public class AgentTelemetryService implements SchedulingConfigurer {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error reading USB devices: " + e.getMessage());
+            logger.error("Error reading USB devices: {}", e.getMessage());
         }
     }
 
@@ -253,9 +261,9 @@ public class AgentTelemetryService implements SchedulingConfigurer {
             alertPayload.setAlertDescription(description);
 
             restTemplate.postForEntity(config.getServerUrl(), alertPayload, Void.class);
-            System.out.println(String.format("ALERT SENT [%s] -> %s", alertType, description));
+            logger.info("ALERT SENT [{}] -> {}", alertType, description);
         } catch (Exception e) {
-            System.err.println("Failed to send alert to SOC/Server: " + e.getMessage());
+            logger.error("Failed to send alert to SOC/Server: {}", e.getMessage());
         }
     }
 

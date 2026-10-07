@@ -3,7 +3,9 @@ import API from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { CustomLoader } from '../components/CustomLoader';
 import { StatusBadge } from '../components/StatusBadge';
-import { FileText, Eye, CheckCircle2, Lock, RefreshCw, X } from 'lucide-react';
+import { FileText, Eye, Lock, RefreshCw } from 'lucide-react';
+import { Modal, ModalFooter } from '../components/Modal';
+import { ModalField, ModalSection } from '../components/ModalComponents';
 
 export const CompliancePage = () => {
   const { user } = useContext(AuthContext);
@@ -39,28 +41,64 @@ export const CompliancePage = () => {
 
   if (user?.role !== 'ADMIN') {
     return (
-      <div className="page-container" style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <Lock size={48} color="#f5222d" style={{ margin: '0 auto 16px' }} />
-        <h2 style={{ color: '#fff' }}>Access Restricted</h2>
-        <p style={{ color: '#8c9ba5' }}>Only System Administrators have authorization to access Compliance Frameworks.</p>
+      <div className="page-container" style={{ textAlign: 'center', padding: '80px 20px' }}>
+        <div
+          style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--CSMS-red-dim)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px',
+          }}
+        >
+          <Lock size={32} color="#ef4444" />
+        </div>
+        <h2 style={{ color: '#ffffff', marginBottom: '8px' }}>Access Restricted</h2>
+        <p style={{ color: 'var(--CSMS-text-muted)', maxWidth: '420px', margin: '0 auto' }}>
+          Only System Administrators have authorization to access Compliance Frameworks.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="page-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <FileText size={24} color="var(--CSMS-green)" />
-          <h2 style={{ color: '#fff', margin: 0 }}>Compliance & DevSecOps Governance</h2>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <FileText size={20} color="#10b981" />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.4rem' }}>Compliance & DevSecOps Governance</h2>
+            <div style={{ fontSize: '0.8rem', color: 'var(--CSMS-text-muted)', marginTop: '2px' }}>
+              Real-time regulatory control audits and OWASP pipeline compliance status
+            </div>
+          </div>
         </div>
-        <button className="btn-primary" onClick={fetchCompliance} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+
+        <button className="btn-white" onClick={fetchCompliance} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <RefreshCw size={14} /> Re-Evaluate
         </button>
       </div>
 
       {/* METRIC SUMMARY CARDS */}
-      <div className="dashboard-grid" style={{ marginBottom: '20px' }}>
+      <div className="dashboard-grid" style={{ marginBottom: '24px' }}>
         <div className="stat-card">
           <div className="stat-title">Compliance Score</div>
           <div className="stat-value" style={{ color: 'var(--CSMS-green)' }}>
@@ -69,13 +107,13 @@ export const CompliancePage = () => {
         </div>
         <div className="stat-card">
           <div className="stat-title">Active Violations</div>
-          <div className="stat-value" style={{ color: summary?.activeViolations > 0 ? '#f5222d' : '#fff' }}>
+          <div className="stat-value" style={{ color: summary?.activeViolations > 0 ? 'var(--CSMS-red)' : '#ffffff' }}>
             {summary?.activeViolations || 0}
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-title">DevSecOps Pipeline</div>
-          <div className="stat-value" style={{ color: 'var(--CSMS-blue)' , fontSize: '1.5rem' }}>
+          <div className="stat-value" style={{ color: 'var(--CSMS-blue)' }}>
             {summary?.owaspStatus || 'PASSED'}
           </div>
         </div>
@@ -83,7 +121,11 @@ export const CompliancePage = () => {
 
       {/* FRAMEWORKS TABLE */}
       <div className="table-panel">
-        <h4 style={{ padding: '16px', color: 'var(--CSMS-text-muted)', margin: 0 }}>Compliance Framework Audits</h4>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--CSMS-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+            Compliance Framework Audits
+          </span>
+        </div>
         <table className="custom-table">
           <thead>
             <tr>
@@ -93,94 +135,74 @@ export const CompliancePage = () => {
               <th>Controls Passed</th>
               <th>Total Controls</th>
               <th>Last Scanned</th>
-              <th>Actions</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {summary?.checks?.map((check) => (
-              <tr key={check.id}>
-                <td style={{ fontWeight: 600, color: '#fff' }}>{check.framework}</td>
-                <td><StatusBadge status={check.status} /></td>
-                <td style={{ fontWeight: 700, color: 'var(--CSMS-green)' }}>{check.scorePercentage}%</td>
-                <td>{check.passedControls}</td>
-                <td>{check.totalControls}</td>
-                <td style={{ fontSize: '0.8rem', color: '#8c9ba5' }}>
-                  {check.lastScanned ? new Date(check.lastScanned).toLocaleString() : 'N/A'}
-                </td>
-                <td>
-                  <button
-                    className="btn-glass btn-blue"
-                    style={{ padding: '4px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                    onClick={() => handleViewCheck(check)}
-                    title="View Framework Details"
-                  >
-                    <Eye size={14} /> View
-                  </button>
+            {summary?.checks && summary.checks.length > 0 ? (
+              summary.checks.map((check) => (
+                <tr key={check.id}>
+                  <td style={{ fontWeight: 700, color: '#ffffff' }}>{check.framework}</td>
+                  <td><StatusBadge status={check.status} /></td>
+                  <td style={{ fontWeight: 700, color: 'var(--CSMS-green)' }}>{check.scorePercentage}%</td>
+                  <td>{check.passedControls}</td>
+                  <td>{check.totalControls}</td>
+                  <td style={{ fontSize: '0.8rem', color: 'var(--CSMS-text-muted)' }}>
+                    {check.lastScanned ? new Date(check.lastScanned).toLocaleString() : 'N/A'}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      className="btn-action"
+                      style={{ padding: '4px 8px', fontSize: '0.78rem' }}
+                      onClick={() => handleViewCheck(check)}
+                      title="View Framework Details"
+                    >
+                      <Eye size={13} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="7" style={{ textAlign: 'center', color: 'var(--CSMS-text-muted)', padding: '32px 20px' }}>
+                  No compliance frameworks registered.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
       {/* VIEW FRAMEWORK DETAILS MODAL */}
-      {isViewModalOpen && selectedCheck && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div className="form-panel" style={{ width: '480px', marginBottom: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Framework Audit Overview</h3>
-              <X size={20} color="#a0aec0" style={{ cursor: 'pointer' }} onClick={() => setIsViewModalOpen(false)} />
-            </div>
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        title="Framework Audit Overview"
+        showCloseButton={true}
+      >
+        {selectedCheck && (
+          <>
+            <ModalSection>
+              <ModalField label="Framework" value={selectedCheck.framework} />
+              <ModalField label="Status" value={<StatusBadge status={selectedCheck.status} />} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <ModalField label="Compliance Score" value={`${selectedCheck.scorePercentage}%`} />
+                <ModalField label="Passed Controls" value={`${selectedCheck.passedControls} / ${selectedCheck.totalControls}`} />
+              </div>
+              <ModalField label="Last Scan Timestamp" value={selectedCheck.lastScanned ? new Date(selectedCheck.lastScanned).toLocaleString() : 'N/A'} />
+            </ModalSection>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.95rem' }}>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: '#8c9ba5', display: 'block' }}>FRAMEWORK</span>
-                <span style={{ fontWeight: 600, color: '#fff', fontSize: '1.1rem' }}>{selectedCheck.framework}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: '#8c9ba5', display: 'block', marginBottom: '4px' }}>STATUS</span>
-                <StatusBadge status={selectedCheck.status} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <span style={{ fontSize: '0.78rem', color: '#8c9ba5', display: 'block' }}>COMPLIANCE SCORE</span>
-                  <span style={{ fontWeight: 700, color: 'var(--CSMS-green)' }}>{selectedCheck.scorePercentage}%</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.78rem', color: '#8c9ba5', display: 'block' }}>PASSED CONTROLS</span>
-                  <span>{selectedCheck.passedControls} / {selectedCheck.totalControls}</span>
-                </div>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: '#8c9ba5', display: 'block' }}>LAST SCAN TIMESTAMP</span>
-                <span>{selectedCheck.lastScanned ? new Date(selectedCheck.lastScanned).toLocaleString() : 'N/A'}</span>
-              </div>
-            </div>
-
-            <button
-              className="btn-glass btn-blue"
-              style={{flex:1, background: "transparent", marginTop: '24px', width: '100%' }}
-              onClick={() => setIsViewModalOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+            <ModalFooter alignment="stretch">
+              <button
+                className="btn-blue"
+                onClick={() => setIsViewModalOpen(false)}
+              >
+                Done
+              </button>
+            </ModalFooter>
+          </>
+        )}
+      </Modal>
     </div>
   );
 };

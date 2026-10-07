@@ -1,9 +1,22 @@
-import { useState, useEffect, useContext, useCallback } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 import { CustomLoader } from "../components/CustomLoader";
 import { StatusBadge } from "../components/StatusBadge";
-import { Eye, Edit, Trash2, X, Check, AlertTriangle, AlertCircle } from "lucide-react";
+import {
+  Server,
+  Plus,
+  Eye,
+  Edit2,
+  Trash2,
+  Search,
+  AlertCircle,
+  CheckCircle2,
+  X,
+  RefreshCw,
+} from "lucide-react";
+import { Modal, ModalFooter } from "../components/Modal";
+import { ModalField, ModalSection, ModalAlert } from "../components/ModalComponents";
 
 export const AssetsPage = () => {
   const { user } = useContext(AuthContext);
@@ -11,6 +24,7 @@ export const AssetsPage = () => {
   const [searchPrefix, setSearchPrefix] = useState("");
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
 
   const canManageAssets =
     user?.role === "ADMIN" || user?.role === "DEVOPS_ENGINEER";
@@ -43,7 +57,7 @@ export const AssetsPage = () => {
         ? `/api/v1/assets/find?prefix=${encodeURIComponent(searchPrefix.trim())}`
         : "/api/v1/assets";
       const res = await API.get(endpoint);
-      setAssets(res.data);
+      setAssets(res.data || []);
     } catch (err) {
       console.error("Assets fetch error:", err);
       setActionError("Failed to fetch assets catalog.");
@@ -56,17 +70,31 @@ export const AssetsPage = () => {
     fetchAssets();
     const interval = setInterval(() => {
       fetchAssets();
-    }, 500);
+    }, 15000);
     return () => clearInterval(interval);
   }, [fetchAssets]);
 
+  const showNotification = (msg, isErr = false) => {
+    if (isErr) {
+      setActionError(msg);
+      setActionSuccess("");
+    } else {
+      setActionSuccess(msg);
+      setActionError("");
+    }
+    setTimeout(() => {
+      setActionError("");
+      setActionSuccess("");
+    }, 5000);
+  };
+
   const validateForm = (data) => {
     const errs = {};
-    if (!data.name.trim()) errs.name = "Asset Name required";
+    if (!data.name.trim()) errs.name = "Asset Name is required";
     if (!data.ip.trim()) {
-      errs.ip = "IP Address required";
-    } else if (!/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(data.ip)) {
-      errs.ip = "Invalid IPv4 address";
+      errs.ip = "IP Address is required";
+    } else if (!/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(data.ip.trim())) {
+      errs.ip = "Invalid IPv4 address (e.g. 10.0.0.1)";
     }
     return errs;
   };
@@ -74,7 +102,6 @@ export const AssetsPage = () => {
   // CREATE Asset
   const handleRegister = async (e) => {
     e.preventDefault();
-    setActionError("");
     const errs = validateForm(formData);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -83,8 +110,8 @@ export const AssetsPage = () => {
 
     const payload = {
       ...formData,
-      name: formData.name.trim().toLowerCase(),
-      ip: formData.ip.trim().toLowerCase(),
+      name: formData.name.trim(),
+      ip: formData.ip.trim(),
     };
 
     try {
@@ -92,12 +119,13 @@ export const AssetsPage = () => {
       setAssets([...assets, res.data]);
       setFormData({ name: "", ip: "", type: "SERVER", status: "HEALTHY" });
       setErrors({});
+      showNotification(`Asset '${res.data.name}' registered successfully.`);
     } catch (err) {
-      setActionError("Asset registration failed. Check inputs or connection.");
+      showNotification(err.response?.data?.message || "Asset registration failed.", true);
     }
   };
 
-  // READ Single Asset Details
+  // READ Single Asset
   const handleViewAsset = (asset) => {
     setSelectedAsset(asset);
     setIsViewModalOpen(true);
@@ -120,7 +148,6 @@ export const AssetsPage = () => {
   // UPDATE Asset
   const handleUpdateAsset = async (e) => {
     e.preventDefault();
-    setActionError("");
     const errs = validateForm(editFormData);
     if (Object.keys(errs).length > 0) {
       setEditErrors(errs);
@@ -137,8 +164,9 @@ export const AssetsPage = () => {
       );
       setIsEditModalOpen(false);
       setSelectedAsset(null);
+      showNotification(`Asset '${res.data.name}' updated successfully.`);
     } catch (err) {
-      setActionError("Failed to update asset details.");
+      showNotification("Failed to update asset details.", true);
     }
   };
 
@@ -149,33 +177,18 @@ export const AssetsPage = () => {
     setIsDeleteModalOpen(true);
   };
 
-  // CONFIRM Delete Operation
+  // CONFIRM Delete
   const handleConfirmDelete = async () => {
     if (!selectedAsset) return;
-    setActionError("");
 
     try {
       await API.delete(`/api/v1/assets/${selectedAsset.assetId}`);
       setAssets(assets.filter((a) => a.assetId !== selectedAsset.assetId));
       setIsDeleteModalOpen(false);
+      showNotification(`Asset '${selectedAsset.name}' deleted successfully.`);
       setSelectedAsset(null);
     } catch (err) {
-      setActionError("Failed to delete asset.");
-    }
-  };
-
-  const handleSearch = async (e) => {
-    const prefix = e.target.value;
-    setSearchPrefix(prefix);
-    if (!prefix.trim()) {
-      fetchAssets();
-      return;
-    }
-    try {
-      const res = await API.get(`/api/v1/assets/find?prefix=${prefix}`);
-      setAssets(res.data);
-    } catch (err) {
-      console.error("Search error:", err);
+      showNotification("Failed to delete asset.", true);
     }
   };
 
@@ -184,11 +197,41 @@ export const AssetsPage = () => {
 
   return (
     <div className="page-container">
-      <h2 style={{ marginBottom: "20px", color: "#fff" }}>
-        Infrastructure Assets
-      </h2>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div
+            style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(59, 130, 246, 0.12)",
+              border: "1px solid rgba(59, 130, 246, 0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Server size={20} color="#3b82f6" />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: "1.4rem" }}>Infrastructure Asset Inventory</h2>
+            <div style={{ fontSize: "0.8rem", color: "var(--CSMS-text-muted)", marginTop: "2px" }}>
+              Managed physical nodes, virtual instances, and database clusters
+            </div>
+          </div>
+        </div>
 
-      {/* ERROR FEEDBACK */}
+        <button
+          className="btn-white"
+          onClick={() => fetchAssets()}
+          style={{ display: "flex", alignItems: "center", gap: "6px" }}
+        >
+          <RefreshCw size={14} /> Refresh Catalog
+        </button>
+      </div>
+
+      {/* Notifications */}
       {actionError && (
         <div
           className="form-panel"
@@ -198,22 +241,38 @@ export const AssetsPage = () => {
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            borderLeft: "4px solid #f5222d",
-            backgroundColor: "rgba(245, 34, 45, 0.1)",
+            borderLeft: "4px solid var(--CSMS-red)",
+            backgroundColor: "var(--CSMS-red-dim)",
           }}
         >
-          <AlertCircle size={18} color="#f5222d" />
-          <span style={{ color: "#fff", fontSize: "0.9rem" }}>{actionError}</span>
+          <AlertCircle size={18} color="#ef4444" />
+          <span style={{ color: "#ffffff", fontSize: "0.88rem" }}>{actionError}</span>
         </div>
       )}
 
-      {/* REGISTRATION FORM - VISIBLE ONLY TO AUTHORIZED ROLES */}
+      {actionSuccess && (
+        <div
+          className="form-panel"
+          style={{
+            marginBottom: "20px",
+            padding: "12px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            borderLeft: "4px solid var(--CSMS-green)",
+            backgroundColor: "var(--CSMS-green-dim)",
+          }}
+        >
+          <CheckCircle2 size={18} color="#10b981" />
+          <span style={{ color: "#ffffff", fontSize: "0.88rem" }}>{actionSuccess}</span>
+        </div>
+      )}
+
+      {/* Registration Form (Authorized Only) */}
       {canManageAssets && (
-        <div className="form-panel" style={{ marginBottom: "20px" }}>
-          <h4
-            style={{ color: "var(--CSMS-text-muted)", marginBottom: "15px" }}
-          >
-            Register Asset
+        <div className="form-panel" style={{ marginBottom: "24px" }}>
+          <h4 style={{ color: "var(--CSMS-text-muted)", marginBottom: "16px", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>
+            Register New Asset
           </h4>
           <form onSubmit={handleRegister}>
             <div className="form-grid">
@@ -225,7 +284,7 @@ export const AssetsPage = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  placeholder="DB-SRV-12"
+                  placeholder="e.g. DB-SRV-12"
                 />
                 {errors.name && (
                   <span className="field-error-msg">{errors.name}</span>
@@ -240,7 +299,7 @@ export const AssetsPage = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, ip: e.target.value })
                   }
-                  placeholder="10.0.0.14"
+                  placeholder="e.g. 10.0.0.14"
                 />
                 {errors.ip && (
                   <span className="field-error-msg">{errors.ip}</span>
@@ -250,23 +309,23 @@ export const AssetsPage = () => {
               <div className="form-field">
                 <label>Asset Type</label>
                 <select
-                  className="form-input"
+                  className="form-select"
                   value={formData.type}
                   onChange={(e) =>
                     setFormData({ ...formData, type: e.target.value })
                   }
                 >
-                  <option value="SERVER">SERVER</option>
-                  <option value="CLOUD_AWS">CLOUD_AWS</option>
-                  <option value="CLOUD_AZURE">CLOUD_AZURE</option>
-                  <option value="K8S_POD">K8S_POD</option>
+                  <option value="SERVER">Server / Compute</option>
+                  <option value="DATABASE">Database Instance</option>
+                  <option value="ROUTER">Network Gateway / Router</option>
+                  <option value="CLOUD_CONTAINER">Cloud Container / Pod</option>
                 </select>
               </div>
 
               <div className="form-field">
-                <label>Status</label>
+                <label>Health State</label>
                 <select
-                  className="form-input"
+                  className="form-select"
                   value={formData.status}
                   onChange={(e) =>
                     setFormData({ ...formData, status: e.target.value })
@@ -280,499 +339,275 @@ export const AssetsPage = () => {
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="btn-glass btn-green"
-              style={{ marginTop: "16px" }}
-            >
-              Register Asset
-            </button>
+            <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end" }}>
+              <button type="submit" className="btn-primary">
+                <Plus size={15} /> Add Asset
+              </button>
+            </div>
           </form>
         </div>
       )}
 
-      {/* ASSET TABLE */}
+      {/* Asset Table Panel */}
       <div className="table-panel">
-        <div
-          style={{
-            padding: "16px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h4 style={{ color: "var(--CSMS-text-muted)", margin: 0 }}>
-            Monitored Assets ({assets.length})
-          </h4>
-          <input
-            className="form-input"
-            style={{ width: "220px" }}
-            placeholder="Filter by IP prefix..."
-            value={searchPrefix}
-            onChange={handleSearch}
-          />
+        <div style={{ padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--CSMS-border)", flexWrap: "wrap", gap: "10px" }}>
+          <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>
+            Asset Inventory ({assets.length})
+          </span>
+
+          <div style={{ position: "relative", width: "240px" }}>
+            <Search size={14} color="var(--CSMS-text-muted)" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+            <input
+              type="text"
+              placeholder="Filter by prefix..."
+              value={searchPrefix}
+              onChange={(e) => setSearchPrefix(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "6px 28px 6px 30px",
+                backgroundColor: "var(--CSMS-bg-dark)",
+                border: "1px solid var(--CSMS-border-strong)",
+                borderRadius: "6px",
+                color: "#ffffff",
+                fontSize: "0.82rem",
+                outline: "none",
+              }}
+            />
+            {searchPrefix && (
+              <X
+                size={13}
+                color="var(--CSMS-text-muted)"
+                onClick={() => setSearchPrefix("")}
+                style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", cursor: "pointer" }}
+              />
+            )}
+          </div>
         </div>
 
         <table className="custom-table">
           <thead>
             <tr>
-              <th>Asset ID</th>
-              <th>Name</th>
+              <th>Asset Name</th>
               <th>IP Address</th>
               <th>Type</th>
-              <th>Last Seen</th>
-              <th>Health Status</th>
-              <th>Actions</th>
+              <th>Status</th>
+              <th>Asset ID</th>
+              <th style={{ textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {assets.map((asset) => (
-              <tr key={asset.assetId}>
-                <td style={{ fontFamily: "monospace" }}>{asset.assetId}</td>
-                <td>{asset.name}</td>
-                <td>{asset.ip}</td>
-                <td>{asset.type}</td>
-                <td>
-                  {asset.lastSeen ? (
-                    <span
-                      style={{ fontSize: "0.85rem", color: "var(--CSMS-text-muted)" }}
-                      title={new Date(asset.lastSeen).toLocaleString()}
-                    >
-                      {new Date(asset.lastSeen).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: "0.85rem", color: "var(--CSMS-text-muted)" }}>Never</span>
-                  )}
-                </td>
-                <td>
-                  <StatusBadge status={asset.status} />
-                </td>
-                <td>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <button
-                      className="btn-glass btn-blue"
-                      style={{
-                        padding: "4px 10px",
-                        fontSize: "0.8rem",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                      onClick={() => handleViewAsset(asset)}
-                      title="View Details"
-                    >
-                      <Eye size={14} /> View
-                    </button>
+            {assets.length > 0 ? (
+              assets.map((asset) => (
+                <tr key={asset.assetId}>
+                  <td style={{ fontWeight: 700, color: "#ffffff" }}>{asset.name}</td>
+                  <td className="mono" style={{ color: "var(--CSMS-blue)" }}>{asset.ip}</td>
+                  <td style={{ fontSize: "0.82rem" }}>{asset.type}</td>
+                  <td>
+                    <StatusBadge status={asset.status} />
+                  </td>
+                  <td className="mono" style={{ color: "var(--CSMS-text-muted)", fontSize: "0.78rem" }}>
+                    {asset.assetId || "—"}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <div style={{ display: "inline-flex", gap: "6px" }}>
+                      <button
+                        className="btn-action"
+                        style={{ padding: "4px 8px", fontSize: "0.78rem" }}
+                        onClick={() => handleViewAsset(asset)}
+                        title="View details"
+                      >
+                        <Eye size={13} />
+                      </button>
 
-                    {canManageAssets && (
-                      <>
-                        <button
-                          className="btn-glass btn-orange"
-                          style={{
-                            padding: "4px 10px",
-                            fontSize: "0.8rem",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                          }}
-                          onClick={() => handleOpenEditModal(asset)}
-                          title="Edit Asset"
-                        >
-                          <Edit size={14} /> Edit
-                        </button>
-                        <button
-                          className="btn-glass btn-red"
-                          style={{
-                            padding: "4px 10px",
-                            fontSize: "0.8rem",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                          }}
-                          onClick={() => handlePromptDelete(asset)}
-                          title="Delete Asset"
-                        >
-                          <Trash2 size={14} /> Delete
-                        </button>
-                      </>
-                    )}
-                  </div>
+                      {canManageAssets && (
+                        <>
+                          <button
+                            className="btn-orange"
+                            style={{ padding: "4px 8px", fontSize: "0.78rem" }}
+                            onClick={() => handleOpenEditModal(asset)}
+                            title="Edit asset"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            className="btn-red"
+                            style={{ padding: "4px 8px", fontSize: "0.78rem" }}
+                            onClick={() => handlePromptDelete(asset)}
+                            title="Delete asset"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" style={{ textAlign: "center", color: "var(--CSMS-text-muted)", padding: "32px 20px" }}>
+                  No infrastructure assets matching current criteria.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* VIEW SINGLE ASSET MODAL */}
-      {isViewModalOpen && selectedAsset && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.8)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            className="form-panel"
-            style={{ width: "480px", marginBottom: 0 }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "20px",
-              }}
-            >
-              <h3 style={{ margin: 0, color: "#fff" }}>Asset Overview</h3>
-              <X
-                size={20}
-                color="#a0aec0"
-                style={{ cursor: "pointer" }}
-                onClick={() => setIsViewModalOpen(false)}
+      {/* VIEW MODAL */}
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        title="Asset Specification"
+        showCloseButton={true}
+      >
+        {selectedAsset && (
+          <>
+            <ModalSection>
+              <ModalField label="Asset Name" value={selectedAsset.name} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <ModalField label="IP Address" value={selectedAsset.ip} mono={true} />
+                <ModalField label="Type" value={selectedAsset.type} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <ModalField label="Health Status" value={<StatusBadge status={selectedAsset.status} />} />
+                <ModalField label="Asset UUID" value={selectedAsset.assetId} mono={true} />
+              </div>
+            </ModalSection>
+
+            <ModalFooter alignment="stretch">
+              <button className="btn-blue" onClick={() => setIsViewModalOpen(false)}>
+                Done
+              </button>
+            </ModalFooter>
+          </>
+        )}
+      </Modal>
+
+      {/* EDIT MODAL */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Modify Asset Parameters"
+        showCloseButton={true}
+      >
+        <form onSubmit={handleUpdateAsset}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div className="form-field">
+              <label>Asset Name</label>
+              <input
+                className={`form-input ${editErrors.name ? "is-invalid" : ""}`}
+                value={editFormData.name}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, name: e.target.value })
+                }
               />
+              {editErrors.name && (
+                <span className="field-error-msg">{editErrors.name}</span>
+              )}
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "14px",
-                fontSize: "0.95rem",
-              }}
-            >
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    color: "#8c9ba5",
-                    display: "block",
-                  }}
-                >
-                  ASSET ID
-                </span>
-                <span style={{ fontFamily: "monospace", fontWeight: 600 }}>
-                  {selectedAsset.assetId}
-                </span>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    color: "#8c9ba5",
-                    display: "block",
-                  }}
-                >
-                  ASSET NAME
-                </span>
-                <span style={{ fontWeight: 600, color: "#fff" }}>
-                  {selectedAsset.name}
-                </span>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    color: "#8c9ba5",
-                    display: "block",
-                  }}
-                >
-                  IP ADDRESS
-                </span>
-                <span style={{ fontFamily: "monospace" }}>
-                  {selectedAsset.ip}
-                </span>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    color: "#8c9ba5",
-                    display: "block",
-                  }}
-                >
-                  INFRASTRUCTURE TYPE
-                </span>
-                <span>{selectedAsset.type}</span>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    color: "#8c9ba5",
-                    display: "block",
-                  }}
-                >
-                  LAST SEEN
-                </span>
-                <span>
-                  {selectedAsset.lastSeen
-                    ? new Date(selectedAsset.lastSeen).toLocaleString()
-                    : "Never"}
-                </span>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    color: "#8c9ba5",
-                    display: "block",
-                    marginBottom: "4px",
-                  }}
-                >
-                  HEALTH STATUS
-                </span>
-                <StatusBadge status={selectedAsset.status} />
-              </div>
+            <div className="form-field">
+              <label>IP Address</label>
+              <input
+                className={`form-input ${editErrors.ip ? "is-invalid" : ""}`}
+                value={editFormData.ip}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, ip: e.target.value })
+                }
+              />
+              {editErrors.ip && (
+                <span className="field-error-msg">{editErrors.ip}</span>
+              )}
             </div>
+
+            <div className="form-field">
+              <label>Asset Type</label>
+              <select
+                className="form-select"
+                value={editFormData.type}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, type: e.target.value })
+                }
+              >
+                <option value="SERVER">Server / Compute</option>
+                <option value="DATABASE">Database Instance</option>
+                <option value="ROUTER">Network Gateway / Router</option>
+                <option value="CLOUD_CONTAINER">Cloud Container / Pod</option>
+              </select>
+            </div>
+
+            <div className="form-field">
+              <label>Status</label>
+              <select
+                className="form-select"
+                value={editFormData.status}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, status: e.target.value })
+                }
+              >
+                <option value="HEALTHY">HEALTHY</option>
+                <option value="WARNING">WARNING</option>
+                <option value="CRITICAL">CRITICAL</option>
+                <option value="OFFLINE">OFFLINE</option>
+              </select>
+            </div>
+          </div>
+
+          <ModalFooter>
             <button
-              className="btn-glass btn-blue"
-              style={{ flex: 1,
-                  background: "transparent",marginTop: "24px", width: "100%" }}
-              onClick={() => setIsViewModalOpen(false)}
+              type="button"
+              className="btn-white"
+              onClick={() => setIsEditModalOpen(false)}
             >
-              Close
+              Cancel
             </button>
-          </div>
-        </div>
-      )}
+            <button type="submit" className="btn-primary">
+              Save Changes
+            </button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
-      {/* EDIT ASSET MODAL */}
-      {isEditModalOpen && selectedAsset && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.8)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
+      {/* DELETE CONFIRMATION MODAL */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Decommission Asset"
+        showCloseButton={true}
+        centered={true}
+      >
+        <div style={{ textAlign: "center", padding: "10px 0" }}>
           <div
-            className="form-panel"
-            style={{ width: "480px", marginBottom: 0 }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "20px",
-              }}
-            >
-              <h3 style={{ margin: 0, color: "#fff" }}>Edit Asset Details</h3>
-              <X
-                size={20}
-                color="#a0aec0"
-                style={{ cursor: "pointer" }}
-                onClick={() => setIsEditModalOpen(false)}
-              />
-            </div>
-
-            <form onSubmit={handleUpdateAsset}>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "16px",
-                }}
-              >
-                <div className="form-field">
-                  <label>Asset Name</label>
-                  <input
-                    className={`form-input ${
-                      editErrors.name ? "is-invalid" : ""
-                    }`}
-                    value={editFormData.name}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, name: e.target.value })
-                    }
-                  />
-                  {editErrors.name && (
-                    <span className="field-error-msg">{editErrors.name}</span>
-                  )}
-                </div>
-
-                <div className="form-field">
-                  <label>IP Address</label>
-                  <input
-                    className={`form-input ${
-                      editErrors.ip ? "is-invalid" : ""
-                    }`}
-                    value={editFormData.ip}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, ip: e.target.value })
-                    }
-                  />
-                  {editErrors.ip && (
-                    <span className="field-error-msg">{editErrors.ip}</span>
-                  )}
-                </div>
-
-                <div className="form-field">
-                  <label>Asset Type</label>
-                  <select
-                    className="form-input"
-                    value={editFormData.type}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, type: e.target.value })
-                    }
-                  >
-                    <option value="SERVER">SERVER</option>
-                    <option value="CLOUD_AWS">CLOUD_AWS</option>
-                    <option value="CLOUD_AZURE">CLOUD_AZURE</option>
-                    <option value="K8S_POD">K8S_POD</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label>Status</label>
-                  <select
-                    className="form-input"
-                    value={editFormData.status}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        status: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="HEALTHY">HEALTHY</option>
-                    <option value="WARNING">WARNING</option>
-                    <option value="CRITICAL">CRITICAL</option>
-                    <option value="OFFLINE">OFFLINE</option>
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-                <button
-                  type="submit"
-                  className="btn-glass btn-green"
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  <Check size={16} /> Save Changes
-                </button>
-                <button
-                className="btn-glass btn-blue"
-                style={{
-                  flex: 1,
-                  background: "transparent",
-                }}
-                onClick={() => setIsDeleteModalOpen(false)}
-              >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* DELETE ASSET CONFIRMATION MODAL */}
-      {isDeleteModalOpen && selectedAsset && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.8)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 2000,
-          }}
-        >
-          <div
-            className="form-panel"
             style={{
-              width: "440px",
-              textAlign: "center",
-              padding: "30px",
-              marginBottom: 0,
+              background: "var(--CSMS-red-dim)",
+              padding: "16px",
+              borderRadius: "50%",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              marginBottom: "16px",
+              display: "inline-flex",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                marginBottom: "16px",
-              }}
-            >
-              <div
-                style={{
-                  background: "rgba(245, 34, 45, 0.15)",
-                  padding: "14px",
-                  borderRadius: "50%",
-                  border: "1px solid rgba(245, 34, 45, 0.3)",
-                }}
-              >
-                <AlertTriangle size={32} color="#f5222d" />
-              </div>
-            </div>
-
-            <h3 style={{ color: "#fff", marginBottom: "10px" }}>
-              Delete Infrastructure Asset?
-            </h3>
-            <p
-              style={{
-                color: "#a0aec0",
-                fontSize: "0.9rem",
-                marginBottom: "20px",
-                lineHeight: 1.5,
-              }}
-            >
-              Are you sure you want to permanently delete asset{" "}
-              <strong style={{ color: "#fff" }}>"{selectedAsset.name}"</strong> (
-              {selectedAsset.ip})? This operation cannot be undone.
-            </p>
-
-            <div style={{ display: "flex", gap: "12px" }}>
-              <button
-                className="btn-glass btn-red"
-                style={{ flex: 1, }}
-                onClick={handleConfirmDelete}
-              >
-                Delete Asset
-              </button>
-              <button
-                className="btn-glass btn-blue"
-                style={{
-                  flex: 1,
-                  background: "transparent",
-                }}
-                onClick={() => setIsDeleteModalOpen(false)}
-              >
-                Cancel
-              </button>
-            </div>
+            <Trash2 size={28} color="#ef4444" />
           </div>
+
+          <p style={{ fontSize: "0.95rem", color: "var(--CSMS-text-main)", marginBottom: "8px" }}>
+            Are you sure you want to permanently remove <strong>{selectedAsset?.name}</strong> ({selectedAsset?.ip})?
+          </p>
+          <p style={{ fontSize: "0.82rem", color: "var(--CSMS-text-muted)" }}>
+            This action will disconnect real-time telemetry streaming for this asset.
+          </p>
         </div>
-      )}
+
+        <ModalFooter alignment="stretch">
+          <button className="btn-white" onClick={() => setIsDeleteModalOpen(false)}>
+            Cancel
+          </button>
+          <button className="btn-red" onClick={handleConfirmDelete}>
+            Decommission Asset
+          </button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 };

@@ -3,7 +3,20 @@ import API from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { CustomLoader } from '../components/CustomLoader';
 import { StatusBadge } from '../components/StatusBadge';
-import { ShieldAlert, History, Clock, UserCheck, CheckCircle2, Lock, RefreshCw, Eye, X, AlertCircle } from 'lucide-react';
+import {
+  ShieldAlert,
+  History,
+  Clock,
+  UserCheck,
+  CheckCircle2,
+  Lock,
+  RefreshCw,
+  Eye,
+  AlertCircle,
+  Activity,
+} from 'lucide-react';
+import { Modal, ModalFooter } from '../components/Modal';
+import { ModalField, ModalSection } from '../components/ModalComponents';
 
 export const IncidentsPage = () => {
   const { user } = useContext(AuthContext);
@@ -23,10 +36,10 @@ export const IncidentsPage = () => {
     if (!isBackground) setLoading(true);
     try {
       const critRes = await API.get('/api/incidents/cirital');
-      setCriticalIncidents(critRes.data);
+      setCriticalIncidents(critRes.data || []);
 
       const allRes = await API.get('/api/incidents');
-      setHistoryIncidents(allRes.data);
+      setHistoryIncidents(allRes.data || []);
       setLastRefreshed(new Date());
     } catch (err) {
       console.error('Error fetching real-time incidents:', err);
@@ -51,7 +64,7 @@ export const IncidentsPage = () => {
   const handleStatusChange = async (id, newStatus) => {
     setUpdateError("");
     if (!canManageIncidents) return;
-    
+
     try {
       await API.put(`/api/incidents/${id}/status?status=${newStatus}`);
       fetchIncidents(true);
@@ -64,70 +77,108 @@ export const IncidentsPage = () => {
 
   return (
     <div className="page-container">
-      {/* HEADER BAR */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShieldAlert size={18} color="#f5222d" />
-            <h3 style={{ color: '#fff', margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Active Critical Incidents</h3>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ShieldAlert size={20} color="#ef4444" />
           </div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--CSMS-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
-            <RefreshCw size={11} className="soc-spinner" style={{ animationDuration: '3s', width: '11px', height: '11px' }} />
-            Live sync active • Last updated: {lastRefreshed.toLocaleTimeString()}
-          </span>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.4rem' }}>Active Critical Incidents</h2>
+              {criticalIncidents.length > 0 && (
+                <span className="badge badge-critical">
+                  {criticalIncidents.length} Unresolved
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--CSMS-text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Activity size={12} color="#10b981" />
+              Live stream active • Synced: {lastRefreshed.toLocaleTimeString()}
+            </div>
+          </div>
         </div>
 
-        <button 
-          className="btn-glass btn-purple"
-          onClick={() => setShowHistory(!showHistory)}
-          style={{ padding: '6px 12px', fontSize: '0.82rem' }}
-        >
-          <History size={14} /> {showHistory ? 'Hide Incident History' : 'View Incident History'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            className="btn-white"
+            onClick={() => fetchIncidents(false)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RefreshCw size={14} /> Refresh
+          </button>
+          <button
+            className="btn-blue"
+            onClick={() => setShowHistory(!showHistory)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <History size={14} /> {showHistory ? 'Hide History' : 'View History'}
+          </button>
+        </div>
       </div>
 
-      {/* ERROR BANNER */}
+      {/* Error Notification */}
       {updateError && (
         <div
           className="form-panel"
           style={{
-            marginBottom: "16px",
-            padding: "10px 14px",
+            marginBottom: "18px",
+            padding: "12px 16px",
             display: "flex",
             alignItems: "center",
-            gap: "8px",
-            borderLeft: "3px solid #f5222d",
-            backgroundColor: "rgba(245, 34, 45, 0.1)",
+            gap: "10px",
+            borderLeft: "4px solid var(--CSMS-red)",
+            backgroundColor: "var(--CSMS-red-dim)",
           }}
         >
-          <AlertCircle size={16} color="#f5222d" />
-          <span style={{ color: "#fff", fontSize: "0.85rem" }}>{updateError}</span>
+          <AlertCircle size={18} color="#ef4444" />
+          <span style={{ color: "#ffffff", fontSize: "0.88rem" }}>{updateError}</span>
         </div>
       )}
 
-      {/* ACTIVE CRITICAL INCIDENTS LIST */}
+      {/* Active Incidents List */}
       {criticalIncidents.length === 0 ? (
-        <div className="form-panel" style={{ textAlign: 'center', color: 'var(--CSMS-text-muted)', padding: '24px', fontSize: '0.88rem' }}>
-          No active unresolved critical incidents at this time.
+        <div className="table-panel" style={{ textAlign: 'center', color: 'var(--CSMS-text-muted)', padding: '40px 20px', fontSize: '0.9rem', marginBottom: '24px' }}>
+          <CheckCircle2 size={36} color="#10b981" style={{ display: 'block', margin: '0 auto 10px', opacity: 0.85 }} />
+          No active critical incidents requiring containment.
         </div>
       ) : (
         criticalIncidents.map((inc) => (
-          <div key={inc.id} className="form-panel" style={{ marginBottom: '14px', padding: '16px', borderLeft: '3px solid var(--CSMS-red)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
+          <div
+            key={inc.id}
+            className="card"
+            style={{
+              marginBottom: '16px',
+              padding: '18px 20px',
+              borderLeft: '4px solid var(--CSMS-red)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#ffffff', fontFamily: 'monospace' }}>
                   #{inc.incidentTicket || 'INC-2026-6258'}
                 </span>
-                <StatusBadge status={inc.severity} /> 
+                <StatusBadge status={inc.severity} />
                 <StatusBadge status={inc.status} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
-                  className="btn-glass btn-blue"
-                  style={{ padding: '4px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  className="btn-action"
+                  style={{ padding: '5px 10px', fontSize: '0.8rem' }}
                   onClick={() => handleViewIncident(inc)}
                 >
-                  <Eye size={13} /> View
+                  <Eye size={13} /> View Specification
                 </button>
                 {!canManageIncidents && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--CSMS-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -137,55 +188,67 @@ export const IncidentsPage = () => {
               </div>
             </div>
 
-            <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem' }}>
+            <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', fontSize: '0.85rem' }}>
               <div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Incident Type</div>
-                <div style={{ fontWeight: 600, color: 'var(--CSMS-text-main)', marginTop: '2px' }}>{inc.type}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Incident Type</div>
+                <div style={{ fontWeight: 600, color: '#ffffff', marginTop: '3px' }}>{inc.type}</div>
               </div>
               <div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Source IP</div>
-                <div style={{ fontWeight: 600, fontFamily: 'monospace', color: 'var(--CSMS-text-main)', marginTop: '2px' }}>{inc.sourceIp}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Source Origin</div>
+                <div style={{ fontWeight: 600, fontFamily: 'monospace', color: 'var(--CSMS-blue)', marginTop: '3px' }}>{inc.sourceIp}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Assigned Team</div>
+                <div style={{ fontWeight: 600, color: '#ffffff', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <UserCheck size={14} color="#10b981" /> {inc.assignedTeam || 'SecOps Tier 1'}
+                </div>
               </div>
             </div>
 
-            <div style={{ marginTop: '10px', fontSize: '0.85rem' }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Impact Summary</div>
-              <div style={{ color: 'var(--CSMS-text-main)', marginTop: '2px' }}>{inc.impactSummary}</div>
+            <div style={{ marginTop: '12px', fontSize: '0.86rem' }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Impact Summary</div>
+              <div style={{ color: 'var(--CSMS-text-main)', marginTop: '3px', lineHeight: 1.4 }}>{inc.impactSummary}</div>
             </div>
 
-            {/* TEAM SLA CARDS */}
-            <div className="dashboard-grid" style={{ marginTop: '12px', marginBottom: '8px', gap: '10px' }}>
-              <div className="stat-card" style={{ padding: '8px 12px' }}>
-                <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <UserCheck size={12} /> Assigned Team
+            {/* SLA Metrics */}
+            <div className="dashboard-grid" style={{ marginTop: '14px', marginBottom: '10px', gap: '10px' }}>
+              <div className="stat-card" style={{ padding: '10px 14px' }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Clock size={13} /> SLA Target
                 </div>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem', marginTop: '2px' }}>{inc.assignedTeam || 'Security Ops'}</div>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', marginTop: '3px', color: '#ffffff' }}>{inc.slaHours} Hours</div>
               </div>
-              <div className="stat-card" style={{ padding: '8px 12px' }}>
-                <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Clock size={12} /> SLA Target
+              <div className="stat-card" style={{ padding: '10px 14px' }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Clock size={13} /> Resolution ETA
                 </div>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem', marginTop: '2px' }}>{inc.slaHours} Hours</div>
-              </div>
-              <div className="stat-card" style={{ padding: '8px 12px' }}>
-                <div style={{ fontSize: '0.7rem', color: 'var(--CSMS-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Clock size={12} /> Resolution ETA
-                </div>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem', marginTop: '2px' }}>{inc.etaMinutes} mins</div>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', marginTop: '3px', color: 'var(--CSMS-orange)' }}>{inc.etaMinutes} mins remaining</div>
               </div>
             </div>
 
-            {/* ACTION BUTTONS */}
+            {/* Action Triage Buttons */}
             {canManageIncidents && (
-              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                <button className="btn-glass btn-assign" style={{ padding: '5px 12px', fontSize: '0.78rem' }} onClick={() => handleStatusChange(inc.id, 'ASSIGNED')}>
-                  Assign
+              <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap' }}>
+                <button
+                  className="btn-white"
+                  style={{ padding: '5px 12px', fontSize: '0.8rem' }}
+                  onClick={() => handleStatusChange(inc.id, 'ASSIGNED')}
+                >
+                  Mark Assigned
                 </button>
-                <button className="btn-glass btn-investigate" style={{ padding: '5px 12px', fontSize: '0.78rem' }} onClick={() => handleStatusChange(inc.id, 'INVESTIGATION')}>
-                  Investigate
+                <button
+                  className="btn-orange"
+                  style={{ padding: '5px 12px', fontSize: '0.8rem' }}
+                  onClick={() => handleStatusChange(inc.id, 'INVESTIGATION')}
+                >
+                  Start Investigation
                 </button>
-                <button className="btn-glass btn-resolve" style={{ padding: '5px 12px', fontSize: '0.78rem' }} onClick={() => handleStatusChange(inc.id, 'RESOLVED')}>
-                  <CheckCircle2 size={13} /> Resolve
+                <button
+                  className="btn-green"
+                  style={{ padding: '5px 12px', fontSize: '0.8rem' }}
+                  onClick={() => handleStatusChange(inc.id, 'RESOLVED')}
+                >
+                  <CheckCircle2 size={13} /> Resolve Incident
                 </button>
               </div>
             )}
@@ -193,12 +256,14 @@ export const IncidentsPage = () => {
         ))
       )}
 
-      {/* HISTORY TABLE */}
+      {/* History Table */}
       {showHistory && (
-        <div className="table-panel" style={{ marginTop: '20px' }}>
-          <h4 style={{ padding: '14px 18px', color: 'var(--CSMS-text-bright)', fontSize: '0.95rem', margin: 0, fontWeight: 700 }}>
-            All Incident History (Including Resolved)
-          </h4>
+        <div className="table-panel" style={{ marginTop: '24px' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--CSMS-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+              Historical Incident Records ({historyIncidents.length})
+            </span>
+          </div>
           <table className="custom-table">
             <thead>
               <tr>
@@ -208,78 +273,80 @@ export const IncidentsPage = () => {
                 <th>Status</th>
                 <th>Impact Summary</th>
                 <th>Assigned Team</th>
-                <th>Actions</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {historyIncidents.map((h) => (
-                <tr key={h.id}>
-                  <td style={{ fontWeight: 600 }}>{h.incidentTicket}</td>
-                  <td>{h.type}</td>
-                  <td><StatusBadge status={h.severity} /></td>
-                  <td><StatusBadge status={h.status} /></td>
-                  <td>{h.impactSummary}</td>
-                  <td>{h.assignedTeam}</td>
-                  <td>
-                    <button
-                      className="btn-glass btn-blue"
-                      style={{ padding: '4px 8px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                      onClick={() => handleViewIncident(h)}
-                    >
-                      <Eye size={13} /> View
-                    </button>
+              {historyIncidents.length > 0 ? (
+                historyIncidents.map((h) => (
+                  <tr key={h.id}>
+                    <td className="mono" style={{ fontWeight: 700, color: '#ffffff' }}>#{h.incidentTicket}</td>
+                    <td style={{ fontSize: '0.82rem' }}>{h.type}</td>
+                    <td><StatusBadge status={h.severity} /></td>
+                    <td><StatusBadge status={h.status} /></td>
+                    <td style={{ color: 'var(--CSMS-text-main)', fontSize: '0.84rem' }}>{h.impactSummary}</td>
+                    <td style={{ fontSize: '0.82rem' }}>{h.assignedTeam || 'SecOps'}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        className="btn-action"
+                        style={{ padding: '4px 8px', fontSize: '0.78rem' }}
+                        onClick={() => handleViewIncident(h)}
+                        title="View details"
+                      >
+                        <Eye size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', color: 'var(--CSMS-text-muted)', padding: '32px 20px' }}>
+                    No historical incident records found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
       )}
 
       {/* VIEW MODAL */}
-      {isViewModalOpen && selectedIncident && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-          <div className="form-panel" style={{ width: '440px', marginBottom: 0, padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>Incident Details</h3>
-              <X size={18} color="#a0aec0" style={{ cursor: 'pointer' }} onClick={() => setIsViewModalOpen(false)} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem' }}>
-              <div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block' }}>INCIDENT TICKET</span>
-                <span style={{ fontWeight: 600, color: '#fff' }}>#{selectedIncident.incidentTicket || 'N/A'}</span>
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        title="Incident Investigation Overview"
+        showCloseButton={true}
+      >
+        {selectedIncident && (
+          <>
+            <ModalSection>
+              <ModalField label="Incident Ticket" value={`#${selectedIncident.incidentTicket || 'N/A'}`} mono={true} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <ModalField label="Incident Type" value={selectedIncident.type} />
+                <ModalField label="Source Origin IP" value={selectedIncident.sourceIp} mono={true} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block' }}>TYPE</span>
-                  <span style={{ fontWeight: 600 }}>{selectedIncident.type}</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block' }}>SOURCE IP</span>
-                  <span style={{ fontFamily: 'monospace' }}>{selectedIncident.sourceIp}</span>
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <ModalField label="Severity" value={<StatusBadge status={selectedIncident.severity} />} />
+                <ModalField label="Current Status" value={<StatusBadge status={selectedIncident.status} />} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block' }}>SEVERITY</span>
-                  <StatusBadge status={selectedIncident.severity} />
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block' }}>STATUS</span>
-                  <StatusBadge status={selectedIncident.status} />
-                </div>
+              <ModalField label="Impact Summary" value={selectedIncident.impactSummary} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <ModalField label="Assigned Team" value={selectedIncident.assignedTeam || 'SecOps'} />
+                <ModalField label="Target SLA" value={`${selectedIncident.slaHours || 4} Hours`} />
               </div>
-              <div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--CSMS-text-muted)', display: 'block' }}>IMPACT SUMMARY</span>
-                <span>{selectedIncident.impactSummary}</span>
-              </div>
-            </div>
-            <button className="btn-glass btn-blue" style={{ marginTop: '18px', width: '100%', padding: '8px', fontSize: '0.85rem' }} onClick={() => setIsViewModalOpen(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+            </ModalSection>
+
+            <ModalFooter alignment="stretch">
+              <button
+                className="btn-blue"
+                onClick={() => setIsViewModalOpen(false)}
+              >
+                Done
+              </button>
+            </ModalFooter>
+          </>
+        )}
+      </Modal>
     </div>
   );
 };

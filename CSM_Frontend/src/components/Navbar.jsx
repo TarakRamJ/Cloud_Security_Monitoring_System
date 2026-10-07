@@ -1,8 +1,9 @@
 import { useContext, useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import { Shield, LogOut, Mail, Calendar, ShieldCheck } from "lucide-react";
+import { Shield, LogOut, Mail, Calendar, ShieldCheck, Sparkles } from "lucide-react";
 import { formatDisplayName } from "../utils/userUtils";
+import { Modal, ModalFooter } from "./Modal";
 
 export const Navbar = ({ onToggleChat, isChatOpen }) => {
   const navigate = useNavigate();
@@ -44,124 +45,124 @@ export const Navbar = ({ onToggleChat, isChatOpen }) => {
 
   return (
     <>
-      <div className="top-navbar">
-        {/* Left Side: Brand Logo & Status Indicator */}
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+      <header className="top-navbar">
+        {/* Left Side: Status Indicator */}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <div
             style={{
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
               gap: "8px",
-              background: "rgba(82, 196, 26, 0.1)",
-              border: "1px solid rgba(82, 196, 26, 0.25)",
-              padding: "6px 14px",
+              background: "rgba(16, 185, 129, 0.08)",
+              border: "1px solid rgba(16, 185, 129, 0.25)",
+              padding: "5px 12px",
               borderRadius: "20px",
-              fontSize: "0.85rem",
-              color: "#52c41a",
+              fontSize: "0.82rem",
+              color: "#10b981",
               fontWeight: 600,
+              letterSpacing: "0.02em",
             }}
           >
             <span
               style={{
-                width: "8px",
-                height: "8px",
+                width: "7px",
+                height: "7px",
                 borderRadius: "50%",
-                backgroundColor: "#52c41a",
-                boxShadow: "0 0 8px #52c41a",
+                backgroundColor: "#10b981",
+                boxShadow: "0 0 8px #10b981",
+                display: "inline-block",
               }}
             />
             SOC Telemetry Online
           </div>
         </div>
 
-        {/* Right Side: Ask CSMS Button + User Profile Avatar */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        {/* Right Side: Ask CSMS AI Button + User Profile Avatar */}
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           {/* Ask CSMS Pill Button */}
           <button
             onClick={onToggleChat}
             style={{
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
               gap: "8px",
-              backgroundColor: isChatOpen ? "#1e293b" : "#171B22",
-              color: "#FFF",
-              border: `1px solid ${isChatOpen ? "#10B981" : "#242933"}`,
+              backgroundColor: isChatOpen ? "rgba(16, 185, 129, 0.16)" : "#131822",
+              color: isChatOpen ? "#ffffff" : "#e2e8f0",
+              border: `1px solid ${isChatOpen ? "#10b981" : "rgba(255, 255, 255, 0.12)"}`,
               borderRadius: "20px",
               padding: "6px 14px",
-              fontSize: "0.82rem",
+              fontSize: "0.84rem",
               fontWeight: 600,
               cursor: "pointer",
               transition: "all 0.2s ease",
+              boxShadow: isChatOpen ? "0 0 14px rgba(16, 185, 129, 0.25)" : "none",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#10B981";
-              e.currentTarget.style.backgroundColor = "#1C222D";
+              if (!isChatOpen) {
+                e.currentTarget.style.borderColor = "#10b981";
+                e.currentTarget.style.backgroundColor = "#1a2230";
+              }
             }}
             onMouseLeave={(e) => {
               if (!isChatOpen) {
-                e.currentTarget.style.borderColor = "#242933";
-                e.currentTarget.style.backgroundColor = "#171B22";
+                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.12)";
+                e.currentTarget.style.backgroundColor = "#131822";
               }
             }}
           >
-            <Shield size={16} color="#10B981" />
-            <span>Ask CSMS</span>
+            <Sparkles size={15} color="#10b981" />
+            <span>Ask CSMS AI</span>
           </button>
 
           {/* Profile Dropdown */}
           {user && (
             <div ref={dropdownRef} style={{ position: "relative" }}>
-              <div
+              <button
+                className="user-profile-btn"
                 onClick={() => setShowDropdown(!showDropdown)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "14px",
-                  cursor: "pointer",
-                }}
+                title={user.username}
+                aria-label="User profile menu"
               >
-                <button className="user-profile-btn">
-                  {getInitials(user.username)}
-                </button>
-              </div>
+                {getInitials(user.username)}
+              </button>
 
               {showDropdown && (
-                <div
-                  className="user-dropdown"
-                  style={{ width: "320px", right: 0, top: "55px" }}
-                >
+                <div className="user-dropdown">
                   <div className="dropdown-header">
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
                         gap: "12px",
-                        marginBottom: "8px",
                       }}
                     >
                       <div
                         className="user-profile-btn"
                         style={{
-                          width: "48px",
-                          height: "48px",
-                          fontSize: "1.2rem",
+                          width: "44px",
+                          height: "44px",
+                          fontSize: "1.1rem",
+                          flexShrink: 0,
                         }}
                       >
                         {getInitials(user.username)}
                       </div>
-                      <div>
+                      <div style={{ overflow: "hidden" }}>
                         <div
                           style={{
-                            fontWeight: 800,
-                            fontSize: "1.1rem",
-                            color: "#fff",
+                            fontWeight: 700,
+                            fontSize: "1rem",
+                            color: "#ffffff",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
                           }}
                         >
                           {formatDisplayName(user.username)}
                         </div>
                         <span
                           className="badge badge-healthy"
-                          style={{ fontSize: "0.72rem", padding: "3px 8px" }}
+                          style={{ fontSize: "0.68rem", padding: "2px 7px", marginTop: "4px" }}
                         >
                           {user.role}
                         </span>
@@ -173,8 +174,8 @@ export const Navbar = ({ onToggleChat, isChatOpen }) => {
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: "14px",
-                      padding: "12px 0",
+                      gap: "12px",
+                      padding: "8px 4px 12px",
                       borderBottom: "1px solid var(--CSMS-border)",
                     }}
                   >
@@ -182,23 +183,25 @@ export const Navbar = ({ onToggleChat, isChatOpen }) => {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "12px",
-                        fontSize: "0.9rem",
-                        color: "var(--CSMS-text-main)",
+                        gap: "10px",
+                        fontSize: "0.85rem",
                       }}
                     >
-                      <Mail size={18} color="#1890ff" />
-                      <div>
+                      <Mail size={16} color="#3b82f6" style={{ flexShrink: 0 }} />
+                      <div style={{ overflow: "hidden" }}>
                         <div
                           style={{
-                            fontSize: "0.72rem",
+                            fontSize: "0.68rem",
                             color: "var(--CSMS-text-muted)",
-                            fontWeight: 600,
+                            fontWeight: 700,
+                            letterSpacing: "0.04em",
                           }}
                         >
-                          EMAIL ADDRESS
+                          EMAIL
                         </div>
-                        <div>{user.email || "admin@CSMS.io"}</div>
+                        <div style={{ color: "var(--CSMS-text-main)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {user.email || "operator@csms.io"}
+                        </div>
                       </div>
                     </div>
 
@@ -206,26 +209,28 @@ export const Navbar = ({ onToggleChat, isChatOpen }) => {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "12px",
-                        fontSize: "0.9rem",
-                        color: "var(--CSMS-text-main)",
+                        gap: "10px",
+                        fontSize: "0.85rem",
                       }}
                     >
-                      <ShieldCheck size={18} color="#52c41a" />
+                      <ShieldCheck size={16} color="#10b981" style={{ flexShrink: 0 }} />
                       <div>
                         <div
                           style={{
-                            fontSize: "0.72rem",
+                            fontSize: "0.68rem",
                             color: "var(--CSMS-text-muted)",
-                            fontWeight: 600,
+                            fontWeight: 700,
+                            letterSpacing: "0.04em",
                           }}
                         >
-                          PERMISSIONS LEVEL
+                          ACCESS LEVEL
                         </div>
-                        <div>
+                        <div style={{ color: "var(--CSMS-text-main)" }}>
                           {user.role === "ADMIN"
-                            ? "Full Control (Read / Write / Delete)"
-                            : "Read-Only Security Analyst"}
+                            ? "Full Administrator"
+                            : user.role === "DEVOPS_ENGINEER"
+                            ? "DevOps Operations"
+                            : "SecOps Analyst"}
                         </div>
                       </div>
                     </div>
@@ -234,28 +239,28 @@ export const Navbar = ({ onToggleChat, isChatOpen }) => {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "12px",
-                        fontSize: "0.9rem",
-                        color: "var(--CSMS-text-main)",
+                        gap: "10px",
+                        fontSize: "0.85rem",
                       }}
                     >
-                      <Calendar size={18} color="#fa8c16" />
+                      <Calendar size={16} color="#f59e0b" style={{ flexShrink: 0 }} />
                       <div>
                         <div
                           style={{
-                            fontSize: "0.72rem",
+                            fontSize: "0.68rem",
                             color: "var(--CSMS-text-muted)",
-                            fontWeight: 600,
+                            fontWeight: 700,
+                            letterSpacing: "0.04em",
                           }}
                         >
-                          ACCOUNT CREATED AT
+                          SESSION TIME
                         </div>
-                        <div>{formatDate(user.createdAt)}</div>
+                        <div style={{ color: "var(--CSMS-text-main)" }}>{formatDate(user.createdAt)}</div>
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ paddingTop: "10px" }}>
+                  <div style={{ paddingTop: "8px" }}>
                     <button
                       className="dropdown-item-btn"
                       onClick={() => {
@@ -263,7 +268,7 @@ export const Navbar = ({ onToggleChat, isChatOpen }) => {
                         setShowLogoutModal(true);
                       }}
                     >
-                      <LogOut size={18} /> Sign Out
+                      <LogOut size={16} /> Sign Out
                     </button>
                   </div>
                 </div>
@@ -271,89 +276,57 @@ export const Navbar = ({ onToggleChat, isChatOpen }) => {
             </div>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Logout Confirmation Modal */}
-      {showLogoutModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.8)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 2000,
-          }}
-        >
+      <Modal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        showCloseButton={true}
+        centered={true}
+        size="default"
+      >
+        <div style={{ textAlign: "center", padding: "10px 0" }}>
           <div
-            className="form-panel"
             style={{
-              width: "420px",
-              textAlign: "center",
-              padding: "30px",
-              marginBottom: 0,
+              background: "rgba(239, 68, 68, 0.12)",
+              padding: "16px",
+              borderRadius: "50%",
+              border: "1px solid rgba(239, 68, 68, 0.25)",
+              marginBottom: "16px",
+              display: "inline-flex",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                marginBottom: "16px",
-              }}
-            >
-              <div
-                style={{
-                  background: "rgba(245, 34, 45, 0.15)",
-                  padding: "14px",
-                  borderRadius: "50%",
-                  border: "1px solid rgba(245, 34, 45, 0.3)",
-                }}
-              >
-                <LogOut size={32} color="#f5222d" />
-              </div>
-            </div>
-
-            <h3 style={{ color: "#fff", marginBottom: "10px" }}>
-              Sign Out of CSMS?
-            </h3>
-
-            <p
-              style={{
-                color: "#a0aec0",
-                fontSize: "0.9rem",
-                marginBottom: "24px",
-                lineHeight: 1.5,
-              }}
-            >
-              Are you sure you want to end your active SecOps session? You will
-              need to sign in again to access telemetry.
-            </p>
-
-            <div style={{ display: "flex", gap: "12px" }}>
-              <button
-                className="btn-glass btn-red"
-                style={{ flex: 1 }}
-                onClick={handleConfirmLogout}
-              >
-                Yes, Sign Out
-              </button>
-
-              <button
-                className="btn-glass btn-blue"
-                style={{ flex: 1, background: "transparent", width: "100%" }}
-                onClick={() => setShowLogoutModal(false)}
-              >
-                Cancel
-              </button>
-            </div>
+            <LogOut size={30} color="#ef4444" />
           </div>
+
+          <h3 className="modal-title" style={{ marginBottom: "8px" }}>
+            Sign Out of CSMS?
+          </h3>
+
+          <p
+            style={{
+              color: "var(--CSMS-text-muted)",
+              fontSize: "0.9rem",
+              marginBottom: "20px",
+              lineHeight: 1.5,
+            }}
+          >
+            Are you sure you want to end your active SecOps session?
+            <br />
+            You will need to sign in again to access live telemetry.
+          </p>
         </div>
-      )}
+
+        <ModalFooter alignment="stretch">
+          <button className="btn-white" onClick={() => setShowLogoutModal(false)}>
+            Cancel
+          </button>
+          <button className="btn-red" onClick={handleConfirmLogout}>
+            Yes, Sign Out
+          </button>
+        </ModalFooter>
+      </Modal>
     </>
   );
 };

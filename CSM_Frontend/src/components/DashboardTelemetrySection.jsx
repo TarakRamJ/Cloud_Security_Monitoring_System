@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Box, Card, CardContent, Typography, keyframes } from "@mui/material";
 import {
   ResponsiveContainer,
@@ -33,7 +33,7 @@ const SKELETON_DATA = [
   { time: "9", val: 50 },
 ];
 
-const SkeletonLineChart = () => (
+const SkeletonLineChart = memo(() => (
   <Box
     sx={{
       position: "relative",
@@ -120,10 +120,10 @@ const SkeletonLineChart = () => (
       </Typography>
     </Box>
   </Box>
-);
+));
 
 // Custom Floating Tooltip matching BKLIT design
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = memo(({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
       <Box
@@ -177,9 +177,9 @@ const CustomTooltip = ({ active, payload, label }) => {
     );
   }
   return null;
-};
+});
 
-export const DashboardTelemetrySection = ({ charts = [], loading = false }) => {
+export const DashboardTelemetrySection = memo(({ charts = [], loading = false }) => {
   return (
     <Card
       elevation={0}
@@ -240,6 +240,7 @@ export const DashboardTelemetrySection = ({ charts = [], loading = false }) => {
                   dot={false}
                   activeDot={{ r: 5, fill: "#818cf8", stroke: "#ffffff", strokeWidth: 2 }}
                   name="CPU %"
+                  isAnimationActive={false}
                 />
                 <Line
                   type="monotone"
@@ -249,6 +250,7 @@ export const DashboardTelemetrySection = ({ charts = [], loading = false }) => {
                   dot={false}
                   activeDot={{ r: 5, fill: "#94a3b8", stroke: "#ffffff", strokeWidth: 2 }}
                   name="Memory %"
+                  isAnimationActive={false}
                 />
                 <Line
                   type="monotone"
@@ -258,6 +260,7 @@ export const DashboardTelemetrySection = ({ charts = [], loading = false }) => {
                   dot={false}
                   activeDot={{ r: 5, fill: "#475569", stroke: "#ffffff", strokeWidth: 2 }}
                   name="Network %"
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -266,4 +269,4 @@ export const DashboardTelemetrySection = ({ charts = [], loading = false }) => {
       </CardContent>
     </Card>
   );
-};
+});

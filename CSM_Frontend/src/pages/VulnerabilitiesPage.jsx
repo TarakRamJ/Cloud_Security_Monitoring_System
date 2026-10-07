@@ -3,7 +3,9 @@ import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 import { CustomLoader } from "../components/CustomLoader";
 import { StatusBadge } from "../components/StatusBadge";
-import { Eye, X, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Bug, Eye, RefreshCw, AlertCircle, CheckCircle2, Plus } from "lucide-react";
+import { Modal, ModalFooter } from "../components/Modal";
+import { ModalField, ModalSection } from '../components/ModalComponents';
 
 export const VulnerabilitiesPage = () => {
   const { user } = useContext(AuthContext);
@@ -33,14 +35,14 @@ export const VulnerabilitiesPage = () => {
     patchStatus: "PENDING",
     affectedServersCount: 10,
     patchedServersCount: 0,
-    scannerSource: "  Scanner",
+    scannerSource: "Tenable Scanner",
   });
   const [formErrors, setFormErrors] = useState({});
 
   const fetchVulns = async () => {
     try {
       const res = await API.get("/api/v1/vulnerabilities");
-      setVulns(res.data);
+      setVulns(res.data || []);
     } catch (err) {
       console.error("Vulnerabilities fetch error", err);
       setNotice({ type: "error", message: "Failed to load vulnerabilities." });
@@ -61,10 +63,10 @@ export const VulnerabilitiesPage = () => {
   const validateNewVuln = () => {
     const errs = {};
     if (!formData.cveId.trim())
-      errs.cveId = "CVE ID required (  CVE-2026-1234)";
-    if (!formData.title.trim()) errs.title = "Title required";
+      errs.cveId = "CVE ID required (e.g. CVE-2026-1234)";
+    if (!formData.title.trim()) errs.title = "Title is required";
     if (formData.cvssScore < 0 || formData.cvssScore > 10)
-      errs.cvssScore = "CVSS Score must be 0 - 10";
+      errs.cvssScore = "CVSS Score must be between 0.0 - 10.0";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -87,7 +89,7 @@ export const VulnerabilitiesPage = () => {
         patchStatus: "PENDING",
         affectedServersCount: 10,
         patchedServersCount: 0,
-        scannerSource: "  Scanner",
+        scannerSource: "Tenable Scanner",
       });
       setFormErrors({});
       setNotice({ type: "success", message: "Vulnerability registered successfully." });
@@ -100,7 +102,7 @@ export const VulnerabilitiesPage = () => {
     setNotice({ type: "", message: "" });
     const qty = parseInt(patchInputs[id]);
     if (!qty || qty <= 0) {
-      setErrors({ ...errors, [id]: "Enter valid count > 0" });
+      setErrors({ ...errors, [id]: "Enter count > 0" });
       return;
     }
 
@@ -112,7 +114,7 @@ export const VulnerabilitiesPage = () => {
 
       setPatchInputs((prev) => ({ ...prev, [id]: "" }));
       setErrors((prev) => ({ ...prev, [id]: null }));
-      setNotice({ type: "success", message: `Patch applied to ${qty} server(s).` });
+      setNotice({ type: "success", message: `Patch deployment dispatched to ${qty} node(s).` });
     } catch (err) {
       setErrors({ ...errors, [id]: "Patch operation failed" });
     }
@@ -123,9 +125,9 @@ export const VulnerabilitiesPage = () => {
     try {
       const res = await API.post(`/api/v1/vulnerabilities/${id}/scan`);
       setVulns(vulns.map((v) => (v.id === id ? res.data : v)));
-      setNotice({ type: "success", message: "Scan completed successfully!" });
+      setNotice({ type: "success", message: "CVE rescan completed." });
     } catch (err) {
-      setNotice({ type: "error", message: "Scan trigger failed." });
+      setNotice({ type: "error", message: "Rescan trigger failed." });
     }
   };
 
@@ -136,9 +138,35 @@ export const VulnerabilitiesPage = () => {
 
   return (
     <div className="page-container">
-      <h2 style={{ marginBottom: "20px", color: "#fff" }}>
-        Vulnerability Assessment & Patch Engine
-      </h2>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div
+            style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(239, 68, 68, 0.12)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Bug size={20} color="#ef4444" />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: "1.4rem" }}>Vulnerability Assessment & Patch Engine</h2>
+            <div style={{ fontSize: "0.8rem", color: "var(--CSMS-text-muted)", marginTop: "2px" }}>
+              Track CVE exposures, CVSS risk profiles, and automated patch rollouts
+            </div>
+          </div>
+        </div>
+
+        <button className="btn-white" onClick={fetchVulns} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <RefreshCw size={14} /> Refresh Catalog
+        </button>
+      </div>
 
       {/* FEEDBACK BANNER */}
       {notice.message && (
@@ -151,20 +179,20 @@ export const VulnerabilitiesPage = () => {
             alignItems: "center",
             gap: "10px",
             borderLeft: `4px solid ${
-              notice.type === "success" ? "#52c41a" : "#f5222d"
+              notice.type === "success" ? "var(--CSMS-green)" : "var(--CSMS-red)"
             }`,
             backgroundColor:
               notice.type === "success"
-                ? "rgba(82, 196, 26, 0.1)"
-                : "rgba(245, 34, 45, 0.1)",
+                ? "var(--CSMS-green-dim)"
+                : "var(--CSMS-red-dim)",
           }}
         >
           {notice.type === "success" ? (
-            <CheckCircle2 size={18} color="#52c41a" />
+            <CheckCircle2 size={18} color="#10b981" />
           ) : (
-            <AlertCircle size={18} color="#f5222d" />
+            <AlertCircle size={18} color="#ef4444" />
           )}
-          <span style={{ color: "#fff", fontSize: "0.9rem" }}>
+          <span style={{ color: "#ffffff", fontSize: "0.88rem" }}>
             {notice.message}
           </span>
         </div>
@@ -172,19 +200,23 @@ export const VulnerabilitiesPage = () => {
 
       {/* CREATE CVE FORM - VISIBLE ONLY TO AUTHORIZED ROLES */}
       {canManageVulns && (
-        <div className="form-panel" style={{ marginBottom: "20px" }}>
+        <div className="form-panel" style={{ marginBottom: "24px" }}>
           <h4
             style={{
               color: "var(--CSMS-text-muted)",
-              marginBottom: "15px",
+              marginBottom: "16px",
+              fontSize: "0.85rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              fontWeight: 700,
             }}
           >
-            Register CVE Record
+            Register CVE Exposure
           </h4>
           <form onSubmit={handleCreateVuln}>
             <div className="form-grid">
               <div className="form-field">
-                <label>CVE ID</label>
+                <label>CVE Identifier</label>
                 <input
                   className={`form-input ${
                     formErrors.cveId ? "is-invalid" : ""
@@ -193,7 +225,7 @@ export const VulnerabilitiesPage = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, cveId: e.target.value })
                   }
-                  placeholder="CVE-2026-1234"
+                  placeholder="e.g. CVE-2026-1234"
                 />
                 {formErrors.cveId && (
                   <span className="field-error-msg">{formErrors.cveId}</span>
@@ -210,7 +242,7 @@ export const VulnerabilitiesPage = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
                   }
-                  placeholder="Remote Code Execution in Webserver"
+                  placeholder="e.g. OpenSSL Buffer Overflow in Handshake"
                 />
                 {formErrors.title && (
                   <span className="field-error-msg">{formErrors.title}</span>
@@ -222,6 +254,8 @@ export const VulnerabilitiesPage = () => {
                 <input
                   type="number"
                   step="0.1"
+                  min="0"
+                  max="10"
                   className={`form-input ${
                     formErrors.cvssScore ? "is-invalid" : ""
                   }`}
@@ -229,7 +263,7 @@ export const VulnerabilitiesPage = () => {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      cvssScore: parseFloat(e.target.value),
+                      cvssScore: parseFloat(e.target.value) || 0,
                     })
                   }
                 />
@@ -239,9 +273,9 @@ export const VulnerabilitiesPage = () => {
               </div>
 
               <div className="form-field">
-                <label>Severity</label>
+                <label>Severity Level</label>
                 <select
-                  className="form-input"
+                  className="form-select"
                   value={formData.severity}
                   onChange={(e) =>
                     setFormData({ ...formData, severity: e.target.value })
@@ -255,311 +289,206 @@ export const VulnerabilitiesPage = () => {
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="btn-primary"
-              style={{ marginTop: "16px" }}
-            >
-              Register Vulnerability
-            </button>
+            <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end" }}>
+              <button
+                type="submit"
+                className="btn-primary"
+              >
+                <Plus size={15} /> Register Vulnerability
+              </button>
+            </div>
           </form>
         </div>
       )}
 
       {/* VULNERABILITIES TABLE */}
       <div className="table-panel">
-        <h4
-          style={{
-            padding: "16px",
-            color: "var(--CSMS-text-muted)",
-            margin: 0,
-          }}
-        >
-          Tracked Vulnerabilities & Patch Action
-        </h4>
+        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--CSMS-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>
+            Tracked Vulnerabilities & Patch Action ({vulns.length})
+          </span>
+        </div>
         <table className="custom-table">
           <thead>
             <tr>
               <th>CVE ID</th>
-              <th>Title</th>
+              <th>Vulnerability Title</th>
               <th>Severity</th>
               <th>CVSS</th>
-              <th>Patch Status</th>
-              <th>Affected</th>
-              <th>Patched</th>
-              <th>Patch Servers Action</th>
-              <th>Actions</th>
+              <th>Status</th>
+              <th>Target Nodes</th>
+              <th>Deploy Patch</th>
+              <th style={{ textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {vulns.map((v) => (
-              <tr key={v.id}>
-                <td style={{ fontWeight: 600 }}>{v.cveId}</td>
-                <td>{v.title}</td>
-                <td>
-                  <StatusBadge status={v.severity} />
-                </td>
-                <td>{v.cvssScore}</td>
-                <td>
-                  <StatusBadge status={v.patchStatus} />
-                </td>
-                <td>{v.affectedServersCount}</td>
-                <td>{v.patchedServersCount}</td>
+            {vulns.length > 0 ? (
+              vulns.map((v) => (
+                <tr key={v.id}>
+                  <td className="mono" style={{ fontWeight: 700, color: "var(--CSMS-blue)" }}>{v.cveId}</td>
+                  <td style={{ fontWeight: 600, color: "#ffffff" }}>{v.title}</td>
+                  <td>
+                    <StatusBadge status={v.severity} />
+                  </td>
+                  <td style={{ fontWeight: 700, color: v.cvssScore >= 8.5 ? "var(--CSMS-red)" : v.cvssScore >= 7.0 ? "var(--CSMS-orange)" : "var(--CSMS-green)" }}>
+                    {v.cvssScore}
+                  </td>
+                  <td>
+                    <StatusBadge status={v.patchStatus} />
+                  </td>
+                  <td style={{ fontSize: "0.82rem" }}>
+                    <span style={{ color: "var(--CSMS-green)", fontWeight: 700 }}>{v.patchedServersCount}</span> / {v.affectedServersCount} patched
+                  </td>
 
-                {/* PATCH ACTION COLUMN */}
-                <td>
-                  {v.patchStatus === "PATCHED" ||
-                  v.patchedServersCount >= v.affectedServersCount ? (
-                    <span
-                      style={{
-                        fontSize: "0.8rem",
-                        color: "#52c41a",
-                        fontWeight: 600,
-                      }}
-                    >
-                      Fully Patched
-                    </span>
-                  ) : canManageVulns ? (
-                    <div>
-                      <div
+                  {/* PATCH ACTION COLUMN */}
+                  <td>
+                    {v.patchStatus === "PATCHED" ||
+                    v.patchedServersCount >= v.affectedServersCount ? (
+                      <span
                         style={{
-                          display: "flex",
-                          gap: "6px",
+                          fontSize: "0.8rem",
+                          color: "var(--CSMS-green)",
+                          fontWeight: 600,
+                          display: "inline-flex",
                           alignItems: "center",
+                          gap: "4px",
                         }}
                       >
-                        <input
-                          type="number"
-                          min="1"
-                          max={v.affectedServersCount - v.patchedServersCount}
-                          className={`form-input patch-qty-input ${
-                            errors[v.id] ? "is-invalid" : ""
-                          }`}
+                        <CheckCircle2 size={13} /> Fully Patched
+                      </span>
+                    ) : canManageVulns ? (
+                      <div>
+                        <div
                           style={{
-                            width: "72px",
-                            padding: "5px 8px",
-                            fontSize: "0.8rem",
-                            textAlign: "center",
-                            MozAppearance: "textfield",
+                            display: "flex",
+                            gap: "6px",
+                            alignItems: "center",
                           }}
-                          placeholder="Qty"
-                          value={patchInputs[v.id] || ""}
-                          onChange={(e) =>
-                            setPatchInputs({
-                              ...patchInputs,
-                              [v.id]: e.target.value,
-                            })
-                          }
-                        />
-                        <button
-                          className="btn-glass btn-green"
-                          style={{
-                            padding: "5px 10px",
-                            fontSize: "0.75rem",
-                            whiteSpace: "nowrap",
-                          }}
-                          onClick={() => handleApplyPatch(v.id)}
                         >
-                          Apply Patch
-                        </button>
+                          <input
+                            type="number"
+                            min="1"
+                            max={v.affectedServersCount - v.patchedServersCount}
+                            className={`form-input ${
+                              errors[v.id] ? "is-invalid" : ""
+                            }`}
+                            style={{
+                              width: "60px",
+                              padding: "4px 6px",
+                              fontSize: "0.8rem",
+                              textAlign: "center",
+                            }}
+                            placeholder="Qty"
+                            value={patchInputs[v.id] || ""}
+                            onChange={(e) =>
+                              setPatchInputs({
+                                ...patchInputs,
+                                [v.id]: e.target.value,
+                              })
+                            }
+                          />
+                          <button
+                            className="btn-green"
+                            style={{
+                              padding: "4px 8px",
+                              fontSize: "0.75rem",
+                              whiteSpace: "nowrap",
+                            }}
+                            onClick={() => handleApplyPatch(v.id)}
+                          >
+                            Apply Patch
+                          </button>
+                        </div>
+                        {errors[v.id] && (
+                          <span
+                            className="field-error-msg"
+                            style={{ fontSize: "0.7rem" }}
+                          >
+                            {errors[v.id]}
+                          </span>
+                        )}
                       </div>
-                      {errors[v.id] && (
-                        <span
-                          className="field-error-msg"
-                          style={{ fontSize: "0.7rem" }}
-                        >
-                          {errors[v.id]}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: "0.8rem", color: "#8c9ba5" }}>
-                      Read-only
-                    </span>
-                  )}
-                </td>
+                    ) : (
+                      <span style={{ fontSize: "0.8rem", color: "var(--CSMS-text-muted)" }}>
+                        Read-only
+                      </span>
+                    )}
+                  </td>
 
-                {/* ACTIONS COLUMN */}
-                <td>
-                  <div style={{ display: "flex", gap: "6px" }}>
-                    <button
-                      className="btn-glass btn-blue"
-                      style={{
-                        padding: "4px 8px",
-                        fontSize: "0.75rem",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                      onClick={() => handleViewVuln(v)}
-                      title="View Details"
-                    >
-                      <Eye size={12} /> View
-                    </button>
-
-                    {canManageVulns && (
+                  {/* ACTIONS COLUMN */}
+                  <td style={{ textAlign: "right" }}>
+                    <div style={{ display: "inline-flex", gap: "6px" }}>
                       <button
                         className="btn-action"
-                        style={{ padding: "4px 8px", fontSize: "0.75rem" }}
-                        onClick={() => handleScan(v.id)}
+                        style={{
+                          padding: "4px 8px",
+                          fontSize: "0.78rem",
+                        }}
+                        onClick={() => handleViewVuln(v)}
+                        title="View Details"
                       >
-                        Rescan
+                        <Eye size={13} />
                       </button>
-                    )}
-                  </div>
+
+                      {canManageVulns && (
+                        <button
+                          className="btn-white"
+                          style={{ padding: "4px 8px", fontSize: "0.78rem" }}
+                          onClick={() => handleScan(v.id)}
+                          title="Trigger Rescan"
+                        >
+                          Rescan
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="8" style={{ textAlign: "center", color: "var(--CSMS-text-muted)", padding: "32px 20px" }}>
+                  No vulnerabilities currently cataloged.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
       {/* VIEW SINGLE VULNERABILITY MODAL */}
-      {isViewModalOpen && selectedVuln && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.8)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            className="form-panel"
-            style={{ width: "480px", marginBottom: 0 }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyInhalt: "space-between",
-                alignItems: "center",
-                marginBottom: "20px",
-              }}
-            >
-              <h3 style={{ margin: 0, color: "#fff" }}>
-                Vulnerability Details
-              </h3>
-              <X
-                size={20}
-                color="#a0aec0"
-                style={{ cursor: "pointer" }}
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        title="Vulnerability Technical Analysis"
+        showCloseButton={true}
+      >
+        {selectedVuln && (
+          <>
+            <ModalSection>
+              <ModalField label="CVE Identifier" value={selectedVuln.cveId} mono={true} />
+              <ModalField label="Vulnerability Title" value={selectedVuln.title} />
+              <ModalField label="Description" value={selectedVuln.description || "No CVE description metadata provided."} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <ModalField label="CVSS Score" value={selectedVuln.cvssScore} mono={true} />
+                <ModalField label="Severity" value={<StatusBadge status={selectedVuln.severity} />} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <ModalField label="Patch Status" value={<StatusBadge status={selectedVuln.patchStatus} />} />
+                <ModalField label="Remediation Progress" value={`${selectedVuln.patchedServersCount} of ${selectedVuln.affectedServersCount} nodes patched`} />
+              </div>
+            </ModalSection>
+
+            <ModalFooter alignment="stretch">
+              <button
+                className="btn-blue"
                 onClick={() => setIsViewModalOpen(false)}
-              />
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "14px",
-                fontSize: "0.95rem",
-              }}
-            >
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    color: "#8c9ba5",
-                    display: "block",
-                  }}
-                >
-                  CVE ID
-                </span>
-                <span style={{ fontWeight: 600, color: "#fff" }}>
-                  {selectedVuln.cveId}
-                </span>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    color: "#8c9ba5",
-                    display: "block",
-                  }}
-                >
-                  TITLE
-                </span>
-                <span style={{ fontWeight: 600 }}>{selectedVuln.title}</span>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    color: "#8c9ba5",
-                    display: "block",
-                  }}
-                >
-                  DESCRIPTION
-                </span>
-                <span>
-                  {selectedVuln.description ||
-                    "No detailed description provided."}
-                </span>
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "10px",
-                }}
               >
-                <div>
-                  <span
-                    style={{
-                      fontSize: "0.78rem",
-                      color: "#8c9ba5",
-                      display: "block",
-                    }}
-                  >
-                    CVSS SCORE
-                  </span>
-                  <span>{selectedVuln.cvssScore}</span>
-                </div>
-                <div>
-                  <span
-                    style={{
-                      fontSize: "0.78rem",
-                      color: "#8c9ba5",
-                      display: "block",
-                    }}
-                  >
-                    SEVERITY
-                  </span>
-                  <StatusBadge status={selectedVuln.severity} />
-                </div>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    color: "#8c9ba5",
-                    display: "block",
-                  }}
-                >
-                  PATCH STATUS
-                </span>
-                <StatusBadge status={selectedVuln.patchStatus} />
-              </div>
-            </div>
-
-            <button
-              className="btn-glass btn-blue"
-              style={{ flex: 1,
-                  background: "transparent",marginTop: "24px", width: "100%" }}
-              onClick={() => setIsViewModalOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+                Done
+              </button>
+            </ModalFooter>
+          </>
+        )}
+      </Modal>
     </div>
   );
 };

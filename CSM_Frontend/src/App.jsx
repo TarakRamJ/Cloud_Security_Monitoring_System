@@ -33,13 +33,14 @@ const AppRoutes = () => {
       <div className="app-shell" style={{ display: 'flex', position: 'relative', overflow: 'hidden' }}>
         <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
 
+        {/* FIX: Removed the marginRight squish logic. The container now flexes normally. */}
         <div
           className="main-content-area"
           style={{
             flex: 1,
             minWidth: 0,
-            transition: 'margin-right 0.3s ease',
-            marginRight: isChatOpen ? '380px' : '0px'
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
           <Navbar
